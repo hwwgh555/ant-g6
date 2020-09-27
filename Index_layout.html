@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Tutorial Demo--G6</title>
+</head>
+
+<body>
+    <div id="mountNode"></div>
+
+    <script type="text/javascript"
+        src="https://gw.alipayobjects.com/os/antv/pkg/_antv.g6-3.7.1/dist/g6.min.js"></script>
+
+    <script>
+        // console.log(G6.Global.version)
+        const main = async () => {
+            const response = await fetch(
+                'https://gw.alipayobjects.com/os/basement_prod/6cae02ab-4c29-44b2-b1fd-4005688febcb.json'
+            )
+        
+            // ??
+            const remoteData = await response.json();
+
+            const graph = new G6.Graph({
+                container: 'mountNode', // 指定挂载器
+                width: 1600,
+                height: 1000,
+                // fitView: true,
+                // fitViewPadding: [20, 40, 50, 20],
+                modes: {
+                    default: [
+                        'drag-node',
+                        'drag-canvas'
+                    ]
+                },
+                defaultNode: {
+                    // color: '#ff0000' // ???
+                    size: 30,
+                    style: {
+                        fill: 'steelblue',
+                        stroke: '#666',
+                        lineWidth: 1,
+                    },
+                    labelCfg: {
+                        style: {
+                            fill: '#fff',
+                        }
+                    }
+                },
+                defaultEdge: {
+                    style: {
+                        opacity: 0.6,
+                        stroke: 'grey',
+                    },
+                    labelCfg: {
+                        autoRotate: true, // 边上标签文本根据边的方向旋转 默认值是 横向，无论线的方向是如何的？
+                    }
+                },
+                layout: {
+                    type: 'force', // 布局
+                    preventOverlap: true, // 阻止节点重叠
+                    linkDistance: 100, // 指定边距离
+                }
+            })
+
+            remoteData.nodes.forEach((node) => {
+                // if (!node.style) {
+                //     node.style = {}
+                // }
+                switch(node.class) {
+                    case 'c1': {
+                        node.type = 'rect'
+                        node.size = [35, 20]
+                        node.style = {
+                            stroke: 'red'
+                        }
+                        break;
+                    }
+                    case 'c2': {
+                        node.type = 'ellipse'
+                        node.size = [35, 20]
+                        break
+                    }
+                    default:
+                        break
+                }
+            })
+
+            remoteData.edges.forEach((edge) => {
+                if (!edge.style) {
+                    edge.style = {}
+                }
+                edge.style.lineWidth = edge.weight
+            })
+
+            graph.data(remoteData)
+
+            graph.render()
+        }
+        main()
+    </script>
+</body>
+
+</html>
