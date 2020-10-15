@@ -1,0 +1,56 @@
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Tutorial Demo--G6</title>
+</head>
+
+<body>
+    <div id="mountNode"></div>
+
+    <script type="text/javascript"
+        src="https://gw.alipayobjects.com/os/antv/pkg/_antv.g6-3.7.1/dist/g6.min.js"></script>
+
+    <script>
+        const data = {
+            nodes: [
+                { id: '1', x: 50, y: 50, size: 20, anchorPoints: [[0,0], [0.5, 1]], type: 'rect' },
+                { id: '2', x: 150, y: 50, size: 20, anchorPoints: [[0, 0], [1, 1]], type: 'rect' },
+                { id: '3', x: 200, y: 50, size: 20, anchorPoints: [[0,0], [0.5, 1]], type: 'rect' },
+                { id: '4', x: 300, y: 130, size: 20, anchorPoints: [[0, 0], [1, 1]], type: 'rect' },
+            ],
+            edges: [
+                { source: '1', target: '2', type: 'line', label: 'line', sourceAnchor: 0, targetAnchor: 1, },
+                { source: '3', target: '4', type: 'polyline', label: 'polyline', sourceAnchor: 0, targetAnchor: 1, },
+            ],
+        };
+
+        const graph = new G6.Graph({
+            container: 'mountNode',
+            width: 1500,
+            height: 300,
+            modes: {
+                default: [
+                    // 'drag-node', // 开启drag-node时， create-edge的trigger的drag无效
+                    {
+                        type: 'create-edge',
+                        trigger: 'drag',
+                        kye: 'shift'
+                    }
+                ]
+            },
+        });
+
+        graph.data(data);
+        
+        graph.on('aftercreateedge', (e) => {
+            console.log('e.edge::', e.edge)
+        })
+
+        graph.render();
+    </script>
+</body>
+
+</html>

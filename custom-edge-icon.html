@@ -1,0 +1,112 @@
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Tutorial Demo--G6</title>
+</head>
+
+<body>
+    <div id="mountNode"></div>
+
+    <script type="text/javascript"
+        src="https://gw.alipayobjects.com/os/antv/pkg/_antv.g6-3.7.1/dist/g6.min.js"></script>
+
+    <script>
+
+        const data = {
+            nodes: [
+                { id: 'node1', x: 50, y: 200, color: 'maroon',
+                    label: 'node1',
+                    anchorPoints: [
+                        [0, 0.5], [1, 0.5],
+                    ]
+                },
+                { id: 'node2', x: 250, y: 100, size: [50, 50],
+                    label: 'node2',
+                    anchorPoints: [
+                        [0, 0.5], [1, 0.5],
+                    ]
+                },
+                { id: 'node3', x: 250, y: 300, size: [50, 50],
+                    label: 'node3',
+                    anchorPoints: [
+                        [0, 0.5], [1, 0.5], [0.5, 0]
+                    ]
+                },
+            ],
+            edges: [
+                {
+                    id: 'edge1',
+                    target: 'node2',
+                    source: 'node1', 
+                    type: 'icon-edge',
+                    img: './logo-50x50.jpg',
+                    sourceAnchor: 1,
+                    targetAnchor: 0,
+                },
+                {
+                    id: 'edge2',
+                    target: 'node3',
+                    source: 'node1', 
+                    type: 'icon-edge',
+                    sourceAnchor: 1,
+                    targetAnchor: 2,
+                },
+            ]
+        };
+        
+        G6.registerEdge('icon-edge', {
+            draw(cfg, group) {
+                // 这里的cfg是计算出来的值 结合dat中的nodes的anchorPoints，以及edges配置的sourceAnchor与targetAnchor
+                console.log({cfg})
+                const startPoint = cfg.startPoint
+                const endPoint = cfg.endPoint
+                const shape = group.addShape('path', {
+                    attrs: {
+                        stroke: '#333',
+                        // path的设置对我来说有挑战 
+                        path: [
+                            ['M', startPoint.x, startPoint.y],
+                            ['L', endPoint.x / 3 + (2 / 3) * startPoint.x, startPoint.y],
+                            ['L', endPoint.x / 3 + (2 / 3) * startPoint.x, endPoint.y],
+                            ['L', endPoint.x, endPoint.y]
+                        ]
+                    },
+                    name: 'path-shape',
+                })
+                if (cfg.img) {
+                    group.addShape('image', {
+                        attrs: {
+                            x: startPoint.x,
+                            y: startPoint.y,
+                            width: 20,
+                            height: 20,
+                            img: cfg.img,
+                        },
+                        name: 'image-shape'
+                    })
+                }
+                return shape
+            }
+        })
+
+        const graph = new G6.Graph({
+            container: 'mountNode',
+            width: 500,
+            height: 500,
+            modes: {
+                default: ['drag-node'],
+            },
+            defaultNode: {
+                type: 'rect'
+            }
+        });
+        graph.data(data);
+        graph.render();
+        
+    </script>
+</body>
+
+</html>

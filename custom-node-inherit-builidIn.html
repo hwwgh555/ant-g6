@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Tutorial Demo--G6</title>
+</head>
+
+<body>
+    <div id="mountNode"></div>
+
+    <script type="text/javascript"
+        src="https://gw.alipayobjects.com/os/antv/pkg/_antv.g6-3.7.1/dist/g6.min.js"></script>
+
+    <script>
+
+        const data = {
+            nodes: [
+                { id: 'node1', x: 50, y: 100, type: 'diamond' }, // 最简单的
+                { id: 'node2', x: 150, y: 100, type: 'diamond', size: [50, 100] }, // 添加宽高
+                { id: 'node3', x: 250, y: 100, label: '红色的边', type: 'diamond' }, // 添加颜色
+                {
+                    id: 'node4', x: 350, y: 100, color: '#00ff00', label: '菱形',
+                    labelCfg: {
+                        fill: 'black'
+                    }, // 附加文本
+                    type: 'diamond'
+                }
+            ],
+        };
+    
+        /* 实际体验： 没有发现与自定义的区别？ -- 需要了解single-node的代码内容 */
+        G6.registerNode(
+            'diamond',
+            {
+                draw(cfg, group) {
+                    const size = this.getSize(cfg); // 转换成 [width, height] 的模式
+                    const color = cfg.color;
+                    const width = size[0];
+                    const height = size[1];
+                    //  / 1 \
+                    // 4     2
+                    //  \ 3 /
+                    const path = [
+                        ['M', 0, 0 - height / 2], // 上部顶点
+                        ['L', width / 2, 0], // 右侧顶点
+                        ['L', 0, height / 2], // 下部顶点
+                        ['L', -width / 2, 0], // 左侧顶点
+                        ['Z'], // 封闭
+                    ];
+                    const style = G6.Util.mix(
+                        {},
+                        {
+                            path: path,
+                            stroke: color || '#888',
+                        },
+                        cfg.style,
+                    );
+                    // 增加一个 path 图形作为 keyShape
+                    const keyShape = group.addShape('path', {
+                        attrs: {
+                            ...style,
+                        },
+                        draggable: true,
+                        name: 'diamond-keyShape',
+                    });
+                    
+                    if (cfg.label) {
+                        group.addShape('text', {
+                            attrs: {
+                                fill: 'black', // fill是必须的
+                                text: cfg.label,
+                            },
+                            name: 'diamond-label',
+                            draggable: true,
+                        })
+                    } 
+                    return keyShape;
+                },
+            },
+            // 注意这里继承了 'single-node'
+            'single-node',
+        );
+
+        const graph = new G6.Graph({
+            container: 'mountNode',
+            width: 500,
+            height: 500,
+            defaultNode: {
+                type: 'rect',
+                label: '我是label',
+                labelCfg: {
+                    fill: '#0000ff'
+                }
+            },
+            modes: {
+                default: ['drag-node'],
+            },
+        });
+        graph.data(data);
+        graph.render();
+
+        // setTimeout(() => {
+        //     // 查找元素的方法都有哪些？
+        //     const item = graph.findById('node1')
+        //     graph.update(item, {
+        //         id: 'node-update', // 更新方式相当于 Object.assing(old, new)，即覆盖原来的
+        //         label: 'update-node',
+        //     })
+        // }, 3000)
+
+    </script>
+</body>
+
+</html>

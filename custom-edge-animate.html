@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Tutorial Demo--G6</title>
+</head>
+
+<body>
+    <div id="mountNode"></div>
+
+    <script type="text/javascript"
+        src="https://gw.alipayobjects.com/os/antv/pkg/_antv.g6-3.7.1/dist/g6.min.js"></script>
+
+    <script>
+
+        const data = {
+            nodes: [
+                { id: 'node1', x: 50, y: 200, color: 'maroon',
+                    label: 'node1',
+                    anchorPoints: [
+                        [0, 0.5], [1, 0.5],
+                    ]
+                },
+                { id: 'node2', x: 250, y: 100, size: [50, 50],
+                    label: 'node2',
+                    anchorPoints: [
+                        [0, 0.5], [1, 0.5],
+                    ]
+                },
+            ],
+            edges: [
+                {
+                    id: 'edge1',
+                    target: 'node2',
+                    source: 'node1', 
+                    type: 'hvh',
+                    sourceAnchor: 1,
+                    targetAnchor: 0,
+                },
+                {
+                    id: 'edge2',
+                    target: 'node3',
+                    source: 'node1', 
+                    type: 'hvh',
+                    sourceAnchor: 1,
+                    targetAnchor: 2,
+                },
+            ]
+        };
+        
+        G6.registerEdge('hvh', {
+            afterDraw(cfg, group) {
+                // 这里的children都有哪些？
+                console.log({cfg, children: group.get('children')})
+                const shape = group.get('children')[0]
+                const length = shape.getTotalLength()
+                shape.animate(
+                    (ratio) => {
+                        const startLen = ratio * length
+                        const cfg = {
+                            lineDash: [startLen, length - startLen],
+                        }
+                        return cfg
+                    },
+                    {
+                        repeat: false,
+                        duration: 2000,
+                    }
+                )
+            }
+        }, 'cubic')
+
+        const graph = new G6.Graph({
+            container: 'mountNode',
+            width: 500,
+            height: 500,
+            modes: {
+                default: ['drag-node'],
+            },
+            defaultNode: {
+                type: 'rect'
+            }
+        });
+        graph.data(data);
+        graph.render();
+        
+    </script>
+</body>
+
+</html>

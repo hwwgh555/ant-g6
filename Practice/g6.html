@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Tutorial Demo--G6</title>
+</head>
+
+<body>
+    <div id="container"></div>
+
+    <script type="text/javascript"
+        src="https://gw.alipayobjects.com/os/antv/pkg/_antv.g6-3.7.1/dist/g6.min.js"></script>
+    <script src="./G6Template/config.js"></script>
+    <script src="./G6Template/util.js"></script>
+    <script src="./G6Template/behavior.js"></script>
+    <script src="./G6Template/node.js"></script>
+    <script src='./G6Template/index.js'></script>
+    <script>
+
+        const data = {
+            nodes: [
+                {
+                    id: 'node1',
+                    label: '文本1',
+                    desc: ['node1----'],
+                    type: 'custom-node',
+                    nodeKey: 'session',
+                    x: -190,
+                    y: 0,
+                    data: {},
+                    branchText: '文本',
+                    branches: [
+                        {
+                            name: '屏幕',
+                            id: '0',
+                            data: {},
+                        },
+                        {
+                            name: '摄像故障',
+                            id: '1',
+                            data: {},
+                        },
+                    ],
+                    defaultBranch: {
+                        name: '文本',
+                        data: {},
+                    }
+                },
+                {
+                    id: 'node2',
+                    label: '文本2',
+                    desc: ['1233333'],
+                    type: 'custom-node',
+                    nodeKey: 'answer',
+                    x: 260,
+                    y: 384,
+                    data: {},
+                    branchText: '文本',
+                    branches: [
+                        {
+                            name: '纳克萨玛斯',
+                            id: '00',
+                            data: {},
+                        },
+                        {
+                            name: '北京仁德医院',
+                            id: '11',
+                            data: {},
+                        },
+                        {
+                            name: '无糖清口含片',
+                            id: '22',
+                            data: {},
+                        },
+                        {
+                            name: '双飞燕鼠标',
+                            id: '33',
+                            data: {},
+                        },
+                        {
+                            name: '双飞燕鼠标hww',
+                            id: '44',
+                            data: {},
+                        },
+                    ],
+                    defaultBranch: {
+                        name: '文本',
+                        data: {},
+                    }
+                },
+                {
+                    id: 'node3',
+                    label: '文本3',
+                    desc: ['您好！请您详细描述手机当前的故障情况。或在以下选项中进行选择。我们将尽快为您提供解决方案。我们将尽快为您提供解决方案。您好！请您详细描述手机当前的故障情况。或在以下选项中进行选择。我们将尽快为您提供解决方案。我们将尽快为您提供解决方案。您好！请您详细描述手机当前的故障情况。或在以下选项中进行选择。我们将尽快为您提供解决方案。我们将尽快为您提供解决方案。您好！请您详细描述手机当前的故障情况。或在以下选项中进行选择。我们将尽快为您提供解决方案。我们将尽快为您提供解决方案。'],
+                    type: 'custom-node',
+                    nodeKey: 'api',
+                    x: 500,
+                    y: 50,
+                    data: {},
+                    branchText: '文本',
+                    branches: [
+                        {
+                            name: '纳克萨玛斯',
+                            id: '0',
+                            data: {},
+                        },
+                        {
+                            name: '北京仁德医院',
+                            id: '1',
+                            data: {},
+                        },
+                        {
+                            name: '无糖清口含片',
+                            id: '2',
+                            data: {},
+                        },
+                        {
+                            name: '双飞燕鼠标',
+                            id: '3',
+                            data: {},
+                        },
+                        {
+                            name: '双飞燕鼠标2',
+                            id: '4',
+                            data: {},
+                        },
+                        {
+                            name: '双飞燕鼠标3',
+                            id: 5,
+                            data: {},
+                        },
+                    ],
+                    defaultBranch: {
+                        name: '文本',
+                        data: {},
+                    }
+                },
+                {
+                    id: 'node4',
+                    label: '文本4',
+                    desc: ['1233333'],
+                    type: 'custom-node',
+                    nodeKey: 'answer',
+                    x: 184,
+                    y: 704,
+                    data: {},
+                    branchText: '文本',
+                    branches: [
+                        {
+                            name: '纳克萨玛斯',
+                            id: '000',
+                            data: {},
+                        },
+                        {
+                            name: '北京仁德医院',
+                            id: '1111',
+                            data: {},
+                        },
+                        {
+                            name: '无糖清口含片',
+                            id: '2222',
+                            data: {},
+                        },
+                        {
+                            name: '双飞燕鼠标',
+                            id: '3333',
+                            data: {},
+                        },
+                    ],
+                    defaultBranch: {
+                        name: '文本',
+                        data: {},
+                    }
+                },
+            ],
+            edges: [
+                {
+                    source: 'startNode',
+                    target: 'node1',
+                    sourceAnchor: 1,
+                    targetAnchor: 0,
+                },
+                {
+                    source: 'node1',
+                    target: 'node2',
+                    sourceAnchor: 1,
+                    targetAnchor: 0,
+                },
+                {
+                    source: 'node1',
+                    target: 'node2',
+                    sourceAnchor: 2,
+                    targetAnchor: 0,
+                },
+                {
+                    source: 'node1',
+                    target: 'node2',
+                    sourceAnchor: 3,
+                    targetAnchor: 0,
+                },
+                {
+                    source: 'node1',
+                    target: 'node2',
+                    sourceAnchor: 4,
+                    targetAnchor: 0,
+                },
+                {
+                    source: 'node3',
+                    target: 'node2',
+                    sourceAnchor: 1,
+                    targetAnchor: 0,
+                },
+                {
+                    source: 'node3',
+                    target: 'node2',
+                    sourceAnchor: 2,
+                    targetAnchor: 0,
+                },
+                {
+                    source: 'node3',
+                    target: 'node2',
+                    sourceAnchor: 3,
+                    targetAnchor: 0,
+                },
+                {
+                    source: 'node3',
+                    target: 'node2',
+                    sourceAnchor: 4,
+                    targetAnchor: 0,
+                },
+                {
+                    source: 'node3',
+                    target: 'node2',
+                    sourceAnchor: 5,
+                    targetAnchor: 0,
+                },
+                {
+                    source: 'node3',
+                    target: 'node2',
+                    sourceAnchor: 6,
+                    targetAnchor: 0,
+                },
+                {
+                    source: 'node3',
+                    target: 'node2',
+                    sourceAnchor: 7,
+                    targetAnchor: 0,
+                },
+                {
+                    source: 'node2',
+                    target: 'node4',
+                    sourceAnchor: 1,
+                    targetAnchor: 0,
+                },
+                {
+                    source: 'node2',
+                    target: 'node4',
+                    sourceAnchor: 2,
+                    targetAnchor: 0,
+                },
+                // {
+                //     source: 'node2',
+                //     target: 'node4',
+                //     sourceAnchor: 3,
+                //     targetAnchor: 0,
+                // },
+                {
+                    source: 'node2',
+                    target: 'node4',
+                    sourceAnchor: 4,
+                    targetAnchor: 0,
+                },
+                {
+                    source: 'node2',
+                    target: 'node4',
+                    sourceAnchor: 5,
+                    targetAnchor: 0,
+                },
+                {
+                    source: 'node2',
+                    target: 'node4',
+                    sourceAnchor: 6,
+                    targetAnchor: 0,
+                },
+            ],
+        }
+       
+        const container = document.querySelector('#container')
+        
+        const addStartNode = data => {
+            /*
+            const startNode = {
+                id: 'startNode',
+                label: '文本',
+                x: container.scrollWidth / 2,
+                y: 80,
+                size: [140, 46],
+                anchorPoints: [
+                    [0.5, 1]
+                ],
+                style: {
+                    fill: '#E7FEFA',
+                    stroke: '#74DFD8',
+                    lineWidth: 1,
+                    cursor: 'pointer',
+                    radius: 4,
+                }
+            }
+            data.nodes = [startNode, ...data.nodes]
+            */
+            data.nodes = data.nodes
+            return data
+        }
+
+
+        const handleNodeClick = (type, item) => {
+            console.log(type, item);
+            // 点击节点名称或引导话术
+            if (type?.includes('up-text')) {
+                const nodeType = type.split('-')[0]
+
+                switch (nodeType) {
+                    case 'session':
+
+                        break;
+
+                    case 'answer':
+                        break;
+
+                    case 'api':
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+            // 点击分支
+            if (type?.includes('branch-name')) {
+            }
+            // 点击添加分支按钮
+            if (type?.includes('add-icon')) {
+            }
+        }
+
+
+        new G6Template(
+            'container',
+            addStartNode(data),
+            {
+                width: container.scrollWidth,
+                height: container.scrollHeight || 1000,
+            },
+            handleNodeClick,
+        )
+
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Tutorial Demo--G6</title>
+</head>
+
+<body>
+    <div id="mountNode"></div>
+
+    <script type="text/javascript"
+        src="https://gw.alipayobjects.com/os/antv/pkg/_antv.g6-3.7.1/dist/g6.min.js"></script>
+
+    <script>
+
+        const data = {
+            nodes: [
+                { id: 'node1', x: 50, y: 200, color: 'maroon',
+                    label: 'node1',
+                    anchorPoints: [
+                        [0, 0.5], [1, 0.5],
+                    ]
+                },
+                { id: 'node2', x: 250, y: 100, size: [50, 50],
+                    label: 'node2',
+                    anchorPoints: [
+                        [0, 0.5], [1, 0.5],
+                    ]
+                },
+                { id: 'node3', x: 250, y: 300, size: [50, 50],
+                    label: 'node3',
+                    anchorPoints: [
+                        [0, 0.5], [1, 0.5], [0.5, 0]
+                    ]
+                },
+            ],
+            edges: [
+                {
+                    id: 'edge1',
+                    target: 'node2',
+                    source: 'node1', 
+                    label: 'edge1',
+                    type: 'line-arrow',
+                    sourceAnchor: 1,
+                    targetAnchor: 0,
+                },
+                {
+                    id: 'edge2',
+                    target: 'node3',
+                    source: 'node1', 
+                    type: 'line-arrow',
+                    sourceAnchor: 1,
+                    targetAnchor: 0,
+                },
+            ]
+        };
+        
+        G6.registerEdge('line-arrow', {
+            draw(cfg, group) {
+                const startPoint = cfg.startPoint
+                const endPoint = cfg.endPoint
+                const shape = group.addShape('path', {
+                    attrs: {
+                        stroke: '#333',
+                        // path的设置对我来说有挑战 
+                        path: [
+                            ['M', startPoint.x, startPoint.y],
+                            ['L', endPoint.x, endPoint.y]
+                        ],
+                        stroke: 'steelblue',
+                        lineWidth: 3,
+                        endArrow: {
+                            path: [
+                                ['M', 0, 0],
+                                ['L', 20, 10],
+                                ['L', 20, -10],
+                                ['z']
+                            ],
+                            fill: 'red',
+                            stroke: '#666',
+                            opacity: 0.8
+                        }
+                    },
+                    name: 'path-shape',
+                })
+                return shape
+            }
+        })
+
+        const graph = new G6.Graph({
+            container: 'mountNode',
+            width: 500,
+            height: 500,
+            modes: {
+                default: ['drag-node'],
+            },
+            defaultNode: {
+                type: 'rect'
+            },
+            defaultEdge: {
+                style: {
+                    // 自定义箭头指向(0, 0)，尾部朝向 x 轴正方向的 path
+                    endArrow: {
+                        path: 'M 0,0 L 20,30 L 20,-10 Z',
+                        // 箭头的偏移量，负值代表向x轴方向移动
+                        fill: '#333',
+                        stroke: 'red',
+                        opacity: 0.8,
+                    }
+                }
+            }
+        });
+        graph.data(data);
+        graph.render();
+        
+    </script>
+</body>
+
+</html>

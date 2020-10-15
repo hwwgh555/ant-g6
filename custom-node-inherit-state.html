@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Tutorial Demo--G6</title>
+</head>
+
+<body>
+    <div id="mountNode"></div>
+
+    <script type="text/javascript"
+        src="https://gw.alipayobjects.com/os/antv/pkg/_antv.g6-3.7.1/dist/g6.min.js"></script>
+
+    <script>
+
+        const data = {
+            nodes: [
+                { id: 'node1', x: 50, y: 100, type: 'custom-rect' }, // 最简单的
+            ],
+        };
+    
+        /* 实际体验： 没有发现与自定义的区别？ -- 需要了解single-node的代码内容 */
+        G6.registerNode(
+            'custom-rect',
+            {
+                setState(name, value, item) {
+                    // 被动响应，并非是马上执行 这里需要结合 setItemState调用才会调用
+                    const group = item.getContainer()
+                    const shape = group.get('children')[0]
+                    const label = group.get('children')[1]
+ 
+                    // name 与 value ?
+                    if (name === 'selected') {
+                        if (value) {
+                            shape.attr('fill', 'red')
+                        } else {
+                            shape.attr('fill', 'black')
+                            label.attr('fill', 'white')
+                        }
+                    }
+                }
+            },
+            // 注意这里继承了 'single-node'
+            'rect',
+        );
+
+        const graph = new G6.Graph({
+            container: 'mountNode',
+            width: 500,
+            height: 500,
+            defaultNode: {
+                type: 'rect',
+                label: '我是label',
+                labelCfg: {
+                    fill: '#0000ff'
+                }
+            },
+            modes: {
+                default: ['drag-node'],
+            },
+        });
+        graph.data(data);
+        graph.render();
+
+        graph.on('node:click', (ev) => {
+            const node = ev.item
+            console.log({node})
+            // hasState
+            graph.setItemState(node, 'selected', !node.hasState('selected'))
+        })
+
+    </script>
+</body>
+
+</html>
