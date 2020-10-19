@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Tutorial Demo--G6</title>
+</head>
+
+<body>
+    <div id="mountNode"></div>
+
+    <script type="text/javascript"
+        src="https://gw.alipayobjects.com/os/antv/pkg/_antv.g6-3.7.1/dist/g6.min.js"></script>
+
+    <script>
+
+        const data = {
+            nodes: [
+                { id: 'node1', x: 50, y: 100, label: '', color: 'maroon', type: 'custom-diamond' }, // 最简单的
+                { id: 'node2', x: 150, y: 100, label: 'node2', type: 'custom-diamond', size: [50, 100] }, // 添加宽高
+                { id: 'node3', x: 250, y: 100, label: '红色的边', color: 'red', type: 'custom-diamond' }, // 添加颜色
+                { id: 'node4', x: 350, y: 100, label: '菱形', type: 'custom-diamond' }, // 附加文本
+            ],
+        };
+
+        G6.registerNode('custom-diamond', {
+            draw(cfg, group) {
+                // cfg就是data中node对象全部信息
+                // shape都有哪些类型？
+                const keyShape = group.addShape('path', {
+                    attrs: {
+                        path: this.getPath(cfg),
+                        stroke: cfg.color || 'black',
+                    },
+                    name: 'path-shape',
+                    /*
+                         // 未发现作用 ？ 
+                         1.需要与 图上的交互行为 modes开启联合使用
+                         2.当前只有添加了 data中配置了label的才可以拖动 ？？
+                    */
+                    draggable: true,
+                })
+                if (cfg.label) {
+                    const label = group.addShape('text', {
+                        attrs: {
+                            x: 0,
+                            y: 0,
+                            textAlign: 'center',
+                            textBaseline: 'middle',
+                            text: cfg.label,
+                            fill: '#666',
+                        },
+                        name: 'text-shape',
+                        draggable: true,
+                    })
+                }
+                return keyShape
+            },
+            getPath(cfg) {
+                const size = cfg.size || [40, 40]
+                const width = size[0]
+                const height = size[1]
+                /*
+                    / 1 \
+                    4    2
+                    \ 3 /
+                */
+                // 可以看出是顺着一条线，写坐标，连接点 其中 M与Z是开始与结束的命令，L为具体点
+                const path = [
+                    ['M', 0, 0 - height / 2], // 上部顶点
+                    ['L', width / 2, 0], // 右侧顶点
+                    ['L', 0, height / 2], // 下部顶点
+                    ['L', -width / 2, 0], // 左侧顶点 //
+                    ['Z'], // 封闭
+                ]
+                return path
+            },
+            update(cfg, node) {
+                // 优化方法 =》 实现增量更新
+                // cfg是新的配置信息; node中包含旧节点的信息
+                const group = node.getContainer();
+                const shape = group.get('children')[0]; // 按照顺序的添加
+                const style = {
+                    path: this.getPath(cfg),
+                    stroke: cfg.color,
+                }
+                shape.attr(style); // 更新属性
+                // 更新文本的逻辑类似，但是需要考虑 cfg.label 是否存在的问题
+                // 通过 label.attr() 更新文本属性即可
+
+                if (cfg.label) {
+                    const labelShape = group.get('children')[1]
+                    if (labelShape) {
+                        // !! 只有首次data的node有相应的label，labelShape才会存在
+                        // 这里是attr也有点特别，而不是配置时使用的attrs
+                        labelShape.attr({
+                            text: cfg.label
+                        })
+                    } else {
+                        group.addShape('text', {
+                            attrs: {
+                                text: cfg.label,
+                                fill: 'red', // 文字的颜色
+                            },
+                            name: 'text-shape',
+                            draggable: true,
+                        })
+                    }
+
+                }
+            }
+        })
+
+
+        const graph = new G6.Graph({
+            container: 'mountNode',
+            width: 500,
+            height: 500,
+            defaultEdge: {
+                style: {
+                    lineWidth: 5,
+                    endArrow: true,
+                },
+            },
+            // 独立的属性项，而非在defaultEdge中
+            edgeStateStyles: {
+                'mul:success': {
+                    stroke: 'success',
+                },
+                'mul:warning': {
+                    stroke: 'yellow',
+                },
+                'mul:error': {
+                    stroke: 'red',
+                },
+            },
+            modes: {
+                default: [
+                    {
+                        type: 'create-edge',
+                        trigger: 'drag'
+                    }
+                ],
+            },
+        });
+        graph.data(data);
+        graph.render();
+
+        graph.on('aftercreateedge', (e) => {
+            console.log(e.edge);
+        });
+
+        graph.on('edge:mouseenter', (e) => {
+            console.log('edge:mouseenter', e)
+            graph.setItemState(e.item, 'mul', 'success') // 这里并非设置 true或false，而是对应的值
+        })
+
+        graph.on('edge:mouseleave', (e) => {
+            console.log('edge:mouseleave')
+            const random = Math.round(Math.random())
+            if (random === 1) {
+                graph.setItemState(e.item, 'mul', 'warning')
+            } else {
+                graph.setItemState(e.item, 'mul', 'error')
+            }
+        })
+
+        graph.on('edge:click', (e) => {
+            console.log({ e });
+            // 这里可以直接更新成功 -- react中不可以 TODO:
+            graph.updateItem(e.item, {
+                label: '111', // label内容会直接更新，target的节点并没有去除
+                stateStyles: { // hover的state的更新无效
+                    hover: {
+                        fill: 'blue',
+                        stroke: 'yellow',
+                    },
+                }
+            })
+            console.log(e.item.getModel())
+            // setTimeout(() => {
+            //     // 这里可以实现删除边
+            //     // graph.removeItem(e.item)
+            //     console.log(graph.save())
+            // }, 1000) 
+            graph.data(graph.save())
+
+            graph.render()
+        });
+
+    </script>
+</body>
+
+</html>

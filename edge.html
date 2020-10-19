@@ -15,9 +15,9 @@
     <script>
         const data = {
             nodes: [
-                { id: '1', x: 50, y: 50, size: 20, anchorPoints: [[0,0], [0.5, 1]], type: 'rect' },
+                { id: '1', x: 50, y: 50, size: 20, anchorPoints: [[0, 0], [0.5, 1]], type: 'rect' },
                 { id: '2', x: 150, y: 50, size: 20, anchorPoints: [[0, 0], [1, 1]], type: 'rect' },
-                { id: '3', x: 200, y: 50, size: 20, anchorPoints: [[0,0], [0.5, 1]], type: 'rect' },
+                { id: '3', x: 200, y: 50, size: 20, anchorPoints: [[0, 0], [0.5, 1]], type: 'rect' },
                 { id: '4', x: 300, y: 130, size: 20, anchorPoints: [[0, 0], [1, 1]], type: 'rect' },
                 { id: '5', x: 350, y: 50, size: 20 },
                 { id: '6', x: 450, y: 50, size: 20 },
@@ -47,10 +47,42 @@
             container: 'mountNode',
             width: 1500,
             height: 300,
+            defaultEdge: {
+            },
+            // 并非在defaultEdge中定义
+            edgeStateStyles: {
+                hover: {
+                    fill: '#ff0000',
+                    stroke: '#ff0000',
+                },
+            }
             // linkCenter: true, // 使边连入节点的中心 // 会导致设置ancherPoints无效
         });
         graph.data(data);
         graph.render();
+
+        graph.on('edge:mouseenter', (e) => {
+            console.log('enter', e)
+            graph.setItemState(e.item, 'hover', true)
+        })
+        graph.on('edge:mouseleave', (e) => {
+            graph.setItemState(e.item, 'hover', false)
+        })
+
+        graph.on('edge:click', (e) => {
+            console.log('click')
+            graph.updateItem(e.item, {
+                label: 'click', // updateItem时，label可以直接改变
+                stateStyles: {
+                // TODO: hover变得的有效，则需要调用 graph.render() 哪些内容可以通过updateItem直接改变，而无需调用rennder?
+                    hover: {
+                        fill: 'blue',
+                        stroke: 'yellow',
+                    }
+                }
+            })
+            // graph.render()
+        })
     </script>
 </body>
 
