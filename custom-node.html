@@ -76,6 +76,7 @@
                 return path
             },
             update(cfg, node) {
+                console.log(111)
                 // 优化方法 =》 实现增量更新
                 // cfg是新的配置信息; node中包含旧节点的信息
                 const group = node.getContainer();
@@ -122,6 +123,15 @@
         });
         graph.data(data);
         graph.render();
+
+        setTimeout(() => {
+            // 查找元素的方法都有哪些？
+            const item = graph.findById('node1')
+            graph.update(item, {
+                id: 'node-update', // 更新方式相当于 Object.assing(old, new)，即覆盖原来的
+                label: 'update-node',
+            })
+        }, 3000)
 
         setTimeout(() => {
             // 查找元素的方法都有哪些？
