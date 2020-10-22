@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Tutorial Demo--G6</title>
+</head>
+
+<body>
+    <div id="mountNode"></div>
+
+    <script type="text/javascript"
+        src="https://gw.alipayobjects.com/os/antv/pkg/_antv.g6-3.7.1/dist/g6.min.js"></script>
+
+    <script>
+        // console.log(G6.Global.version)
+        /*
+            combo 适合当前的场景吗？
+            优势
+                * 连线比较好处理
+                    * node与combo是分离的
+                    * 随着内部元素的多少，自动变大或变小
+            缺陷
+                * 与后端的存储结构不一致
+        */
+
+        const initData = {
+            nodes: [
+                {
+                    id: 'node1-1',
+                    label: 'node1内部节点1-1',
+                    type: 'rect',
+                    comboId: 'combo1',
+                    // x: 200,
+                    // y: 100,
+                },
+                {
+                    id: 'node1-2',
+                    label: 'node1内部节点1-2',
+                    type: 'rect',
+                    comboId: 'combo1',
+                    // x: 350,
+                    // y: 100,
+                },
+                {
+                    id: 'node2-1',
+                    label: 'node2内部节点',
+                    type: 'rect',
+                    comboId: 'combo2',
+                    // x: 400,
+                    // y: 400,
+                },
+                {
+                    id: 'node3-1',
+                    label: 'node3内部节点',
+                    type: 'rect',
+                    comboId: 'combo3',
+                    // x: 800,
+                    // y: 600,
+                },
+            ],
+            combos: [
+                {
+                    id: 'combo1',
+                    label: 'combo1',
+                    size: [
+                        200,
+                        100,
+                    ],
+                },
+                {
+                    id: 'combo2',
+                    label: 'combo2',
+                    size: [
+                        200,
+                        100,
+                    ],
+                },
+                {
+                    id: 'combo3',
+                    label: 'combo3',
+                    size: [
+                        200,
+                        100,
+                    ],
+                },
+            ],
+            edges: [
+                {
+                    source: 'node1-1',
+                    target: 'combo2',
+                    label: '我是连线'
+                },
+                {
+                    source: 'node2',
+                    target: 'node3',
+                    label: '连线2-3'
+                },
+                {
+                    source: 'node3-1',
+                    target: 'combo1',
+                    label: '连线2-3'
+                }
+            ]
+        }
+
+        const graph = new G6.Graph({
+            container: 'mountNode', // 指定挂载器
+            width: 1600,
+            height: 1000,
+            fitView: true,
+            // fitViewPadding: [20, 40, 50, 20],
+            // animate: true,
+            groupByTypes: false,
+            layout: {
+                type: 'dagre',
+                rankdir: 'LR',
+                align: undefined,
+            },
+            defaultCombo: {
+                type: 'rect',
+                style: {
+                    lineWidth: 1,
+                },
+            },
+            defaultEdge: {
+                style: {
+                    endArrow: true,
+                }
+            },
+            modes: {
+                default: [
+                    // 'drag-node',
+                    'drag-canvas',
+                    'create-edge'
+                ]
+            },
+        })
+
+        // graph.data(remoteData)
+        graph.data(initData)
+
+        graph.render()
+
+    </script>
+</body>
+
+</html>
