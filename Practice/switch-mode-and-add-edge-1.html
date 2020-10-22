@@ -12,6 +12,12 @@
     <script type="text/javascript"
         src="https://gw.alipayobjects.com/os/antv/pkg/_antv.g6-3.7.1/dist/g6.min.js"></script>
     <script>
+        /*
+            边需要处理的问题
+            1. 鼠标停止drag的位置并非节点 // TODO: 优化
+            2. 已连线的不应该再连线 // TODO:
+            3. 删除连线 // 找到相应的元素就可以删除
+        */
         // 存在问题： 当拖动取消后，会有空白空间上添加箭头 TODO:
         let addedCount = 0;
         // Register a custom behavior: add a node when user click the blank part of canvas
@@ -41,23 +47,42 @@
             // Set the events and the corresponding responsing function for this behavior
             getEvents() {
                 return {
-                    // 'node:click': 'onClick', // The event is canvas:click, the responsing function is onClick
-                    'node:dragstart': 'onDragstart', // The event is canvas:click, the responsing function is onClick
-                    'node:drop': 'onDrop', // The event is canvas:click, the responsing function is onClick
+                    'node:click': 'getOutEdges',
+                    'node:dragstart': 'onDragstart',
+                    'node:drop': 'onDrop',
+                    'node:dragenter': 'onDragenter', // 会产生吸附感
                     'node:drag': 'onMousemove',
-                    // mousemove: 'onMousemove', // The event is mousemove, the responsing function is onMousemove
-                    'edge:click': 'onEdgeClick', // The event is edge:click, the responsing function is onEdgeClick
+                    'edge:mouseleave': 'onEdgeMouseleave',
                 };
+            },
+            getOutEdges(ev) {
+                console.log(ev.item.getOutEdges())
             },
             onDragstart(ev) {
                 const model = ev.item.getModel()
                 this.edge = this.graph.addItem('edge', {
                     source: model.id,
                     target: model.id,
+                    style: {
+                        lineAppendWidth: 10,
+                    }
                 })
                 this.addingEdge = true
             },
+            onDragenter(ev) {
+                // TODO:
+                console.log('dragenter')
+                // 产生吸附
+                const model = ev.item.getModel()
+                console.log({ev, model})
+                if (this.addingEdge && this.edge) {
+                    this.graph.updateItem(this.edge, {
+                        target: model.id,
+                    })
+                }
+            },
             onDrop(ev) {
+                console.log('drop')
                 const model = ev.item.getModel()
                 console.log({ev, model})
                 if (this.addingEdge && this.edge) {
@@ -68,35 +93,6 @@
                     this.edge = null
                 }
             },
-            // The responsing function for node:click defined in getEvents
-            onClick(ev) {
-                const self = this;
-                const node = ev.item;
-                const graph = self.graph;
-                // The position where the mouse clicks
-                const point = { x: ev.x, y: ev.y };
-                const model = node.getModel();
-                console.log({
-                    addingEdge: self.addingEdge,
-                    edge: self.edge
-                })
-                if (self.addingEdge && self.edge) {
-                    graph.updateItem(self.edge, {
-                        target: model.id,
-                    });
-
-                    self.edge = null;
-                    self.addingEdge = false;
-                } else {
-                    // Add anew edge, the end node is the current node user clicks
-                    self.edge = graph.addItem('edge', {
-                        source: model.id,
-                        target: model.id,
-                    });
-                    self.addingEdge = true;
-                }
-            },
-            // The responsing function for mousemove defined in getEvents
             onMousemove(ev) {
                 const self = this;
                 // The current position the mouse clicks
@@ -108,8 +104,9 @@
                     });
                 }
             },
-            // The responsing function for edge:click defined in getEvents
-            onEdgeClick(ev) {
+            onEdgeMouseleave(ev) {
+                // 鼠标在非节点停止拖动时，删除增加的edge
+                // 可能存在，不消失的情况 TODO:
                 const self = this;
                 const currentEdge = ev.item;
                 if (self.addingEdge && self.edge === currentEdge) {
@@ -196,7 +193,7 @@
                     fill: 'steelblue',
                 },
             },
-        });
+        })
         graph.data(data);
         graph.render();
 

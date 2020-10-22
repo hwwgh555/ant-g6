@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Tutorial Demo--G6</title>
+</head>
+
+<body>
+    <div id="container"></div>
+
+    <script type="text/javascript"
+        src="https://gw.alipayobjects.com/os/antv/pkg/_antv.g6-3.7.1/dist/g6.min.js"></script>
+    <script>
+        const $container = document.querySelector('#container');
+        /* 使用内置的 create-edge 创建边 */
+        /*
+            存在问题： 拖动时，在anchorPoints附近移动时，连线的出发点会改变
+        */
+        G6.registerNode('myNode', {
+            draw(cfg, group) {
+                const keyShape = group.addShape('rect', {
+                    attrs: {
+                        fill: 'red',
+                        width: 120,
+                        height: 60,
+                    },
+                    name: 'rect-shape'
+                })
+                if (cfg.label) {
+                    group.addShape('text', {
+                        attrs: {
+                            text: cfg.label,
+                            x: 0,
+                            y: 0,
+                            fontSize: 14,
+                            textAlign: 'center',
+                            textBaseline: 'middle',
+                            fill: '#0000D9',
+                        },
+                        name: 'text-shape'
+                    })
+                }
+                group.addShape('rect', {
+                    attrs: {
+                        x: 30,
+                        y: 30,
+                        fill: 'blue',
+                        width: 30,
+                        height: 30,
+                    },
+                    draggable: true,
+                    name: 'rect-shape'
+                })
+                group.addShape('rect', {
+                    attrs: {
+                        x: 70,
+                        y: 30,
+                        fill: 'blue',
+                        width: 30,
+                        height: 30,
+                    },
+                    draggable: true,
+                    name: 'rect-shape'
+                })
+                return keyShape
+            },
+            update(cfg) {
+
+            },
+            setState() {
+
+            },
+            // getAnchorPoints(cfg) {
+            //     if (cfg.anchorPoints) {
+            //         console.log(cfg.anchorPoints)
+            //         return cfg.anchorPoints
+            //     } else {
+            //         return null
+            //     }
+            // }
+        })
+
+        const graph = new G6.Graph({
+            container: 'container',
+            width:  $container.scrollWidth,
+            height: $container.scrollHeight || 500,
+            defaultNode: {
+                type: 'rect'
+            },
+            defaultEdge: {
+                style: {
+                    endArrow: true,
+                }
+            },
+            layout: {
+                type: 'dagre',
+                rankdir: 'TB',
+            },
+            modes: {
+                default: [
+                    {
+                        type: 'create-edge',
+                        trigger: 'drag',
+                        // shouldBegin(e) {
+                        //     console.log('beginn::', e)
+                        //     return true
+                        // },
+                        // shouldEnd(e) {
+                        //     console.log('end::', e)
+                        //     return true
+                        // }
+                    }
+                ]
+            }
+        })
+
+        const data = {
+            nodes: [
+                {
+                    id: 'node1',
+                    label: 'node1',
+                    size: [100, 50],
+                    type: 'myNode',
+                    // x: 0,
+                    // y: 0,
+                    anchorPoints: [
+                        [0.5, 0],
+                        [0.3, 1],
+                        [0.8, 1],
+                    ]
+                },
+                {
+                    id: 'node2',
+                    label: 'node2',
+                    size: [100, 50],
+                    type: 'myNode',
+                    // x: 100,
+                    // y: 100,
+                    anchorPoints: [
+                        [0.5, 0],
+                        [0.3, 1],
+                        [0.8, 1],
+                    ]
+                },
+            ],
+            edges: [
+                {
+                    id: 'edge1',
+                    source: 'node1',
+                    target: 'node2',
+                    sourceAnchor: 1,
+                    targetAnchor: 0,
+                }
+            ]
+        }
+        graph.data(data)
+        graph.render()
+
+        graph.on('aftercreateedge', (e) => {
+            console.log(e.edge);
+        });
+
+    </script>
+</body>
+
+</html>
