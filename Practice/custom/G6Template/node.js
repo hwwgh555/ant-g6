@@ -39,6 +39,7 @@ const node = () => {
                         shadowColor: config[nodeKey].shadowColor,
                         shadowBlur: 8,
                     },
+                    // isKeyShape: true,
                     capture: true,
                 })
                 // 节点上部

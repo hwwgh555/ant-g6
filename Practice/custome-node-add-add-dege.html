@@ -17,30 +17,101 @@
             当前只有点击 红块 以外才能 出现edge TODO: // 如何只在特定条件下出现edge       
         */
 
-        G6.registerBehavior('addEdge', {
+        const DRAG_NODE_MODE = 'dragNode'
+        const ADD_EDGE_MODE = 'addEdge'
+
+        G6.registerBehavior('change-mode', {
+            getEvents() {
+                return {
+                    /*
+                        * onMouseover可以区分不同 shape，在同一个shape中只触发一次
+                        * add-edge激活drag中，托动到其它shape时，不会再触发 -- dom event也是这样吗？
+                    */
+                    'node:mouseover': 'onNodeMouseover',
+                }
+            },
+            getIsEdgeLinkShape(ev) {
+                // 1.待提取 2.待思考 -- 值的设置到底是怎样的？
+                const curShape = ev.target
+                return !!curShape.get('custom-isEdgeLinkPoint')
+            },
+            onNodeMouseover(ev) {
+                const isEdgeLinkPoint = this.getIsEdgeLinkShape(ev)
+                if (isEdgeLinkPoint) {
+                    this.graph.setMode('addEdge')
+                } else {
+                    this.graph.setMode('dragNode')
+                }
+            },
+        })
+
+        G6.registerBehavior('add-edge', {
             getEvents() {
                 return {
                     'node:dragstart': 'onNodeDragstart',
-                    //'edge:mouseleave': 'onEdgeMouseleave', // 这里待完善，有时候出现不消失的情况 TODO:
                     drag: 'onNodeMousemouse',
                     'node:drop': 'onNodeDrop',
                     dragend: 'onDragend'
                 }
             },
+            getIsEdgeLinkShape(ev) {
+                const curShape = ev.target
+                return !!curShape.get('custom-isEdgeLinkPoint')
+            },
+            getSourceAnchor(ev) {
+                // 通过对比预定义的anchorPoints的x轴与拖动时的起始点坐标x，近的即是
+                const { x } = ev
+                const item = ev.item
+                const { minX, width } = item.getBBox()
+                const anchorPoints = item.getModel().anchorPoints
+                const cursorPoint = (x - minX) / width
+                if (anchorPoints.length === 1) {
+                    return -1
+                }
+                if (anchorPoints.length === 2) {
+                    return 1
+                }
+                let target = {
+                    index: 0,
+                    value: 0,
+                }
+                anchorPoints.slice(1).forEach((item, index) => {
+                    const xDis = Math.abs(cursorPoint - item[0])
+                    if(index === 0) {
+                        target.index = index
+                        target.value = xDis
+                    } else {
+                        const isSmaller = xDis < target.value
+                        if (isSmaller) {
+                            target.index = index
+                            target.value = xDis
+                        }
+                    }
+                })
+                return target.index + 1
+            },
             onNodeDragstart(ev) {
+                ev.stopPropagation()
+                ev.preventDefault()
+                const isEdgeLinkPoint = this.getIsEdgeLinkShape(ev)
+                if (!isEdgeLinkPoint) return
                 const graph = this.graph
                 const node = ev.item
                 const model = node.getModel()
+                /* soureAnchor如何实现与配置项 相一致呢？
+                    * 二者计算位置的方式一致化
+                */
                 this.edge = graph.addItem('edge', {
                     source: model.id,
                     target: model.id,
+                    sourceAnchor: this.getSourceAnchor(ev),
                 })
                 // 新加了一个id作为对比
                 this.source = model.id
                 this.addingEdge = true
             },
-            // 模仿antd内置的库的 create-edge处理
             onDragend(ev) {
+                // 模仿antd内置的库的 create-edge处理
                 const { item } = ev
                 if (!item || item.getID() === this.source || item.getType() !== 'node') {
                     if (this.addingEdge && this.edge) {
@@ -49,6 +120,25 @@
                         this.addingEdge = false
                     }
                 }
+            },
+            onNodeDrop(ev) {
+                if(ev.item.getModel().isStartNode) {
+                    // TODO:
+                    if (this.addingEdge && this.edge) {
+                        this.graph.removeItem(this.edge)
+                        this.edge = null
+                        this.addingEdge = false
+                    }
+                    return
+                }
+                if (this.edge && this.addingEdge) {
+                    this.graph.updateItem(this.edge, {
+                        target: ev.item.getModel().id,
+                        targetAnchor: 0,
+                    })
+                }
+                this.addingEdge = false
+                this.edge = null
             },
             onNodeMousemouse(ev) {
                 if (this.edge && this.addingEdge) {
@@ -60,16 +150,6 @@
                     })
                 }
             },
-            onNodeDrop(ev) {
-                if (this.edge && this.addingEdge) {
-                    this.graph.updateItem(this.edge, {
-                        target: ev.item.getModel().id
-                    })
-                    this.addingEdge = false
-                    this.edge = null
-                    console.log('xxx', this.addingEdge, this.edge)
-                }
-            }
         })
 
         G6.registerNode('myNode', {
@@ -99,22 +179,26 @@
                 group.addShape('rect', {
                     attrs: {
                         x: 30,
-                        y: 30,
+                        y: 20,
                         fill: 'blue',
                         width: 30,
                         height: 30,
                     },
-                    name: 'rect-shape'
+                    'custom-isEdgeLinkPoint': true, // 自定义属性，用于区分 keyShape
+                    draggable: true,
+                    name: 'rect-shape1'
                 })
                 group.addShape('rect', {
                     attrs: {
                         x: 70,
-                        y: 30,
+                        y: 20,
                         fill: 'blue',
                         width: 30,
                         height: 30,
                     },
-                    name: 'rect-shape'
+                    'custom-isEdgeLinkPoint': true,
+                    draggable: true,
+                    name: 'rect-shape2'
                 })
                 return keyShape
             },
@@ -130,35 +214,96 @@
             container: 'container',
             width: $container.scrollWidth,
             height: $container.scrollHeight || 500,
+            defaultEdge: {
+                style: {
+                    endArrow: true,
+                }
+            },
             defaultNode: {
                 type: 'rect'
             },
             layout: {
                 type: 'dagre',
-                rankdir: 'TB',
+                // rankdir: 'TB',
             },
             modes: {
-                default: ['addEdge']
+                // default: [ADD_LINE_MODE],
+                default: ['change-mode', 'drag-node'],
+                [DRAG_NODE_MODE]: ['change-mode', 'drag-node'],
+                [ADD_EDGE_MODE]: ['change-mode', 'add-edge'],
             }
         })
+
         const data = {
             nodes: [
                 {
                     id: 'node1',
                     label: 'node1',
                     size: [100, 50],
-                    type: 'myNode'
+                    type: 'myNode',
+                    isStartNode: true, // 初始节点的特别设置 是否可以向其连线
+                    anchorPoints: [
+                        [0.5, 0],
+                        [0.4, 0.8],
+                        [0.7, 0.8],
+                    ]
                 },
                 {
                     id: 'node2',
                     label: 'node2',
                     size: [100, 50],
-                    type: 'myNode'
+                    type: 'myNode',
+                    anchorPoints: [
+                        [0.5, 0],
+                        [0.4, 0.8],
+                        [0.7, 0.8],
+                    ],
                 },
+                {
+                    id: 'node3',
+                    label: 'node3',
+                    size: [100, 50],
+                    type: 'myNode',
+                    anchorPoints: [
+                        [0.5, 0],
+                        [0.4, 0.8],
+                        [0.7, 0.8],
+                    ],
+                },
+                {
+                    id: 'node4',
+                    label: 'node4',
+                    size: [100, 50],
+                    type: 'myNode',
+                    anchorPoints: [
+                        [0.5, 0],
+                        [0.4, 0.8],
+                        [0.7, 0.8],
+                    ],
+                },
+            ],
+            edges: [
+                {
+                    source: 'node1',
+                    target: 'node2',
+                    sourceAnchor: 1,
+                    targetAnchor: 0,
+                },
+                {
+                    source: 'node1',
+                    target: 'node3',
+                    sourceAnchor: 2,
+                    targetAnchor: 0,
+                },
+                // {
+                //     source: 'node2',
+                //     target: 'node4',
+                // },
             ]
         }
         graph.data(data)
         graph.render()
+        graph.setMode('addEdge')
     </script>
 </body>
 
