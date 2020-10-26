@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Tutorial Demo--G6</title>
+    <style>
+        body {
+            background-color: #f2f5f7;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container"></div>
+
+    <script type="text/javascript"
+        src="https://gw.alipayobjects.com/os/antv/pkg/_antv.g6-3.7.1/dist/g6.min.js"></script>
+    <script>
+
+        const fittingString = (str, answersWrapperWidth, fontSize) => {
+            let currentWidth = 0;
+            let res = str;
+            let lineCount = 1;
+            let strArr = []
+            // 匹配中文正则
+            const pattern = new RegExp('[\u4E00-\u9FA5]+');
+            str.split('').forEach((letter, i) => {
+                if (pattern.test(letter)) {
+                    currentWidth += fontSize;
+                } else {
+                    // getLetterWidth 似乎计算不准确
+                    currentWidth += G6.Util.getLetterWidth(letter, fontSize);
+                }
+                if (currentWidth > answersWrapperWidth) {
+                    strArr.push(`${letter}\n`)
+                    lineCount++
+                    currentWidth = 0
+                } else {
+                    strArr.push(letter)
+                }
+            });
+            res = strArr.join('')
+
+            return {
+                linesStr: res,
+                lineCount,
+                lineWidth: lineCount === 1 ? currentWidth : answersWrapperWidth, // TODO:
+            }
+        }
+
+        const $container = document.querySelector('#container');
+        const DRAG_NODE_MODE = 'dragNode'
+        const ADD_EDGE_MODE = 'addEdge'
+
+        // 颜色应该是放在COLOR中，还是放在对应的块中？
+        const COLOR = {
+            primary: '#1FCDCF',
+            hoverPrimary: '#b4eaeb',
+            white: '#FFFFFF',
+            gray: '#f2f5f7',
+        }
+
+        const WRAPPER = {
+            paddingTop: 5,
+            paddingLeft: 5,
+        }
+
+        const FAVIROTE = {
+            width: 40,
+            icon: './icons/close.png',
+        }
+
+        const HEADER = {
+            selected: '',
+            paddingLeft: 10,
+            paddingTop: 5,
+            MAX_WIDTH: 500,
+            title: {
+                fontSize: 16,
+                lineHeight: 30,
+            },
+            content: {
+                fontSize: 14,
+                lineHeight: 20,
+            },
+        }
+
+        const BOTTOM_TITLE = {
+            paddingTop: 5,
+            lineHeight: 15,
+        }
+        G6.registerBehavior('change-mode', {
+            getEvents() {
+                return {
+                    /*
+                        * onMouseover可以区分不同 shape，在同一个shape中只触发一次
+                        * add-edge激活drag中，托动到其它shape时，不会再触发 -- dom event也是这样吗？
+                    */
+                    'node:mouseover': 'onNodeMouseover',
+                }
+            },
+            getIsEdgeLinkShape(ev) {
+                // 1.待提取 2.待思考 -- 值的设置到底是怎样的？
+                const curShape = ev.target
+                return !!curShape.get('custom-isEdgeLinkPoint')
+            },
+            onNodeMouseover(ev) {
+                const isEdgeLinkPoint = this.getIsEdgeLinkShape(ev)
+                if (isEdgeLinkPoint) {
+                    this.graph.setMode('addEdge')
+                } else {
+                    this.graph.setMode('dragNode')
+                }
+            },
+        })
+
+        G6.registerBehavior('add-edge', {
+            getEvents() {
+                return {
+                    'node:dragstart': 'onNodeDragstart',
+                    drag: 'onNodeMousemouse',
+                    'node:drop': 'onNodeDrop',
+                    dragend: 'onDragend'
+                }
+            },
+            getIsEdgeLinkShape(ev) {
+                const curShape = ev.target
+                return !!curShape.get('custom-isEdgeLinkPoint')
+            },
+            getSourceAnchor(ev) {
+                // 通过对比预定义的anchorPoints的x轴与拖动时的起始点坐标x，近的即是
+                const { x } = ev
+                const item = ev.item
+                const { minX, width } = item.getBBox()
+                const anchorPoints = item.getModel().anchorPoints
+                const cursorPoint = (x - minX) / width
+                if (anchorPoints.length === 1) {
+                    return -1
+                }
+                if (anchorPoints.length === 2) {
+                    return 1
+                }
+                let target = {
+                    index: 0,
+                    value: 0,
+                }
+                anchorPoints.slice(1).forEach((item, index) => {
+                    const xDis = Math.abs(cursorPoint - item[0])
+                    if (index === 0) {
+                        target.index = index
+                        target.value = xDis
+                    } else {
+                        const isSmaller = xDis < target.value
+                        if (isSmaller) {
+                            target.index = index
+                            target.value = xDis
+                        }
+                    }
+                })
+                return target.index + 1
+            },
+            onNodeDragstart(ev) {
+                ev.stopPropagation()
+                ev.preventDefault()
+                const isEdgeLinkPoint = this.getIsEdgeLinkShape(ev)
+                if (!isEdgeLinkPoint) return
+                const graph = this.graph
+                const node = ev.item
+                const model = node.getModel()
+                /* soureAnchor如何实现与配置项 相一致呢？
+                    * 二者计算位置的方式一致化
+                */
+                this.edge = graph.addItem('edge', {
+                    source: model.id,
+                    target: model.id,
+                    sourceAnchor: this.getSourceAnchor(ev),
+                })
+                // 新加了一个id作为对比
+                this.source = model.id
+                this.addingEdge = true
+            },
+            onDragend(ev) {
+                // 模仿antd内置的库的 create-edge处理
+                const { item } = ev
+                if (!item || item.getID() === this.source || item.getType() !== 'node') {
+                    if (this.addingEdge && this.edge) {
+                        this.graph.removeItem(this.edge)
+                        this.edge = null
+                        this.addingEdge = false
+                    }
+                }
+            },
+            onNodeDrop(ev) {
+                if (ev.item.getModel().isStartNode) {
+                    // TODO:
+                    if (this.addingEdge && this.edge) {
+                        this.graph.removeItem(this.edge)
+                        this.edge = null
+                        this.addingEdge = false
+                    }
+                    return
+                }
+                if (this.edge && this.addingEdge) {
+                    this.graph.updateItem(this.edge, {
+                        target: ev.item.getModel().id,
+                        targetAnchor: 0,
+                    })
+                }
+                this.addingEdge = false
+                this.edge = null
+            },
+            onNodeMousemouse(ev) {
+                if (this.edge && this.addingEdge) {
+                    this.graph.updateItem(this.edge, {
+                        target: {
+                            x: ev.x,
+                            y: ev.y,
+                        }
+                    })
+                }
+            },
+        })
+
+
+        /*
+            ANSWER模型 -- 类似css的盒模板
+
+        */
+        const ANSWER = {
+            top: 80, // 参考起始点
+            xSpace: 20, // 多个Answer之间的距离
+            paddingTop: 2, // 文字与Answer边框的距离
+            paddingLeft: 8,
+            addIconWidth: 20,
+            bg: '#fff',
+            color: '#000',
+            fontSize: 14,
+            height: 18,
+        }
+
+        G6.registerNode('myNode', {
+            draw(cfg, group) {
+
+                // const maxWrapperWidth = FAVIROTE.width + 
+
+                const headerTitleLineHeight = HEADER.title.lineHeight
+
+                const getLabelWidth = (label) => {
+                    if (!label) {
+                        // 最小值
+                        return 8 + 24 + 8
+                    }
+                    return label.split('').length * ANSWER.fontSize
+                }
+                let answersWrapperWidth = 0
+
+                const getAnswersWidth = (answers) => {
+                    let answersWrapperWidth = 0
+                    answers.forEach((item) => {
+                        answersWrapperWidth += ANSWER.paddingLeft * 2 + ANSWER.xSpace + getLabelWidth(item.label)
+                    })
+                    answersWrapperWidth += ANSWER.addIconWidth
+                    return answersWrapperWidth
+                }
+                answersWrapperWidth = getAnswersWidth(cfg.answers)
+
+                const wraperWidth = WRAPPER.paddingLeft * 2 + FAVIROTE.width + answersWrapperWidth
+                // 文字计算有差异
+                const { linesStr, lineCount, lineWidth } = fittingString(cfg.content, answersWrapperWidth - HEADER.paddingLeft * 2, HEADER.content.fontSize)
+                const headerCotentHeight = HEADER.content.lineHeight * lineCount
+                // 高度如何计算才精准？
+                // 全名需要调整 TODO:
+                const headerHeight = HEADER.paddingTop * 3 + headerTitleLineHeight + headerCotentHeight
+                const headerWidth = HEADER.paddingLeft * 2 + lineWidth
+                const bottomTitleHeight = BOTTOM_TITLE.paddingTop * 2 + BOTTOM_TITLE.lineHeight
+                /*
+                    最外层宽度： 收藏(固定) +  或者 answers宽度
+                    最外层高度:  标题部分（主体部分是动态的） + 客户回答(固定) + 回复(固定)
+                */
+                const keyShape = group.addShape('rect', {
+                    attrs: {
+                        stroke: '#0000FF',
+                        fill: COLOR.gray,
+                        width: wraperWidth, // 是由 answer的多少来决定的
+                        height: WRAPPER.paddingTop + headerHeight + bottomTitleHeight + ANSWER.paddingTop * 2 + ANSWER.height, // 由纵向内容区决定
+                    },
+                    name: 'rect-shape'
+                })
+
+                /*
+                    收藏图标
+                    y =  padding + 标题部分高度的中间部分
+                */
+                group.addShape('image', {
+                    attrs: {
+                        x: 5,
+                        y: WRAPPER.paddingTop + headerHeight / 2, // 动态计算
+                        img: FAVIROTE.icon,
+                        width: 30,
+                        height: 30,
+                        cursor: 'pointer',
+                    },
+                    capture: true,
+                    name: `favirote-icon`,
+                })
+
+                // start= header 主体文字说明
+                group.addShape('rect', {
+                    attrs: {
+                        stroke: '#0000FF',
+                        /* 存在3种
+                            未选中：'#FFFFFF'
+                            hover: '#b4eaeb'
+                            选中: COLOR.primary
+                        */
+                        fill: COLOR.white,
+                        x: FAVIROTE.width,
+                        y: WRAPPER.paddingTop,
+                        width: headerWidth,
+                        height: headerHeight,
+                    },
+                    name: 'rect-shape'
+                })
+
+                if (cfg.label) {
+                    group.addShape('text', {
+                        attrs: {
+                            text: cfg.label,
+                            x: FAVIROTE.width + HEADER.paddingLeft,
+                            y: WRAPPER.paddingTop + HEADER.paddingTop,
+                            fontSize: HEADER.title.fontSize,
+                            lineHeight: HEADER.title.lineHeight,
+                            textAlign: 'left',
+                            textBaseline: 'top', // 参考点位于 文字的坐标的上方
+                            fill: '#3D4966',
+                        },
+                        name: 'text-shape'
+                    })
+                }
+                if (cfg.content) {
+                    group.addShape('text', {
+                        attrs: {
+                            x: FAVIROTE.width + HEADER.paddingLeft,
+                            y: WRAPPER.paddingTop + HEADER.paddingTop + headerTitleLineHeight,
+                            text: linesStr, // 多行文本
+                            fontSize: HEADER.content.fontSize,
+                            lineHeight: HEADER.content.lineHeight,
+                            textAlign: 'left',
+                            textBaseline: 'top', // 参考点位于 文字的坐标的上方
+                            fill: '#3D4966', // TODO: 提取
+                        },
+                        name: 'text-shape'
+                    })
+                }
+                //=end header
+
+                // 客户回复
+                group.addShape('text', {
+                    attrs: {
+                        x: FAVIROTE.width,
+                        y: WRAPPER.paddingTop + headerHeight + BOTTOM_TITLE.paddingTop,
+                        text: '客户回复:',
+                        textAlign: 'left',
+                        textBaseline: 'top',
+                        fill: '#999999',
+                        fontSize: ANSWER.fontSize,
+                        cursor: 'pointer',
+                    },
+                    capture: true,
+                    name: `client-name`
+                })
+
+                if (cfg.answers) {
+                    const branches = cfg.answers
+
+                    // 添加group之后， item.target 还能不能获取相应的shape? TODO:
+
+                    let lastLeft = FAVIROTE.width
+                    branches.forEach((itm, idx) => {
+                        // 分支外框
+                        const width = ANSWER.paddingLeft * 2 + getLabelWidth(itm.label)
+                        group.addShape('rect', {
+                            attrs: {
+                                x: lastLeft,
+                                y: WRAPPER.paddingTop + headerHeight + bottomTitleHeight + ANSWER.paddingTop,
+                                width: width,
+                                height: ANSWER.height,
+                                radius: 1,
+                                fill: COLOR.white,
+                                stroke: COLOR.white,
+                                cursor: 'pointer',
+                            },
+                            capture: true,
+                            name: `${idx}-branch-name`
+                        })
+                        // 分支文字
+                        group.addShape('text', {
+                            attrs: {
+                                x: lastLeft + ANSWER.paddingLeft,
+                                y: WRAPPER.paddingTop + headerHeight + bottomTitleHeight + ANSWER.paddingTop,
+                                text: itm.label ? itm.label : '',
+                                textAlign: 'left',
+                                textBaseline: 'top',
+                                fill: COLOR.primary, // 有点奇怪 TODO:
+                                fontSize: ANSWER.fontSize,
+                                cursor: 'pointer',
+                            },
+                            capture: true,
+                            name: `${idx}-branch-name`
+                        })
+                        //分支关闭图标
+                        group.addShape('image', {
+                            attrs: {
+                                x: lastLeft + width - 7, // 需要计算图标宽度
+                                y: WRAPPER.paddingTop + headerHeight + bottomTitleHeight + ANSWER.paddingTop - 5,
+                                img: './icons/close.png',
+                                cursor: 'pointer',
+                            },
+                            capture: true,
+                            name: `${idx}-branch-close-icon`
+                        })
+                        lastLeft += width + ANSWER.xSpace
+                    })
+                    group.addShape('image', {
+                        attrs: {
+                            x: lastLeft,
+                            y: WRAPPER.paddingTop + headerHeight + bottomTitleHeight + ANSWER.paddingTop,
+                            img: './icons/add.png',
+                            cursor: 'pointer',
+                        },
+                        capture: true,
+                        name: `branch-add-icon`
+                    })
+                }
+
+                // group.addShape('rect', {
+                //     attrs: {
+                //         x: 30,
+                //         y: 20,
+                //         fill: 'blue',
+                //         width: 30,
+                //         height: 30,
+                //     },
+                //     'custom-isEdgeLinkPoint': true, // 自定义属性，用于区分 keyShape
+                //     draggable: true,
+                //     name: 'rect-shape1'
+                // })
+
+                return keyShape
+            },
+            update(cfg) {
+
+            },
+            setState() {
+
+            }
+        })
+
+        const graph = new G6.Graph({
+            container: 'container',
+            width: $container.scrollWidth,
+            height: $container.scrollHeight || 1000,
+            defaultEdge: {
+                style: {
+                    endArrow: true,
+                }
+            },
+            defaultNode: {
+                type: 'rect'
+            },
+            layout: {
+                type: 'dagre',
+                // rankdir: 'TB',
+            },
+            modes: {
+                // default: [ADD_LINE_MODE],
+                default: ['change-mode', 'drag-node'],
+                [DRAG_NODE_MODE]: ['change-mode', 'drag-node'],
+                [ADD_EDGE_MODE]: ['change-mode', 'add-edge'],
+            }
+        })
+
+        const data = {
+            nodes: [
+                {
+                    id: 'node1',
+                    label: '开始开始开始开始开始',
+                    // content: '不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！',
+                    content: '不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！',
+                    size: [100, 50],
+                    type: 'myNode',
+                    isStartNode: true, // 初始节点的特别设置 是否可以向其连线
+                    anchorPoints: [
+                        [0.5, 0],
+                        [0.4, 0.8],
+                        [0.7, 0.8],
+                    ],
+                    answers: [
+                        {
+                            label: '肯定',
+                        },
+                        {
+                            label: '否定',
+                        },
+                        // {
+                        //     label: '自定义',
+                        // },
+                        // {
+                        //     label: '自定义2',
+                        // },
+                        {
+                            label: '未知',
+                        },
+                    ]
+                },
+                // {
+                //     id: 'node2',
+                //     label: 'node2',
+                //     size: [100, 50],
+                //     type: 'myNode',
+                //     anchorPoints: [
+                //         [0.5, 0],
+                //         [0.4, 0.8],
+                //         [0.7, 0.8],
+                //     ],
+                // },
+                // {
+                //     id: 'node3',
+                //     label: 'node3',
+                //     size: [100, 50],
+                //     type: 'myNode',
+                //     anchorPoints: [
+                //         [0.5, 0],
+                //         [0.4, 0.8],
+                //         [0.7, 0.8],
+                //     ],
+                // },
+                // {
+                //     id: 'node4',
+                //     label: 'node4',
+                //     size: [100, 50],
+                //     type: 'myNode',
+                //     anchorPoints: [
+                //         [0.5, 0],
+                //         [0.4, 0.8],
+                //         [0.7, 0.8],
+                //     ],
+                // },
+            ],
+            edges: [
+                // {
+                //     source: 'node1',
+                //     target: 'node2',
+                //     sourceAnchor: 1,
+                //     targetAnchor: 0,
+                // },
+                // {
+                //     source: 'node1',
+                //     target: 'node3',
+                //     sourceAnchor: 2,
+                //     targetAnchor: 0,
+                // },
+                // {
+                //     source: 'node2',
+                //     target: 'node4',
+                // },
+            ]
+        }
+        graph.data(data)
+        graph.render()
+        graph.setMode('addEdge')
+    </script>
+</body>
+
+</html>
