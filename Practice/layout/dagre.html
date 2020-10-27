@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Tutorial Demo--G6</title>
+    <style>
+        .g6-tooltip {
+            border-radius: 6px;
+            font-size: 12px;
+            color: #fff;
+            background-color: #000;
+            padding: 2px 8px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="mountNode"></div>
+
+    <script type="text/javascript"
+        src="https://gw.alipayobjects.com/os/antv/pkg/_antv.g6-3.7.1/dist/g6.min.js"></script>
+
+    <script>
+        // console.log(G6.Global.version)
+        const main = async () => {
+
+            const initData = {
+                nodes: [
+                    {
+                        id: 'node1',
+                        size: 100,
+                        label: '起始点',
+                        labelCfg: {
+                            positions: 'right', // 无效？
+                            style: {
+                                fontSize: 18,
+                                color: '#ffffff'
+                            }
+                        },
+                        style: { // 边框的样式
+                            fill: '#0000ff',
+                            stroke: 'maroon'
+                        }
+                    },
+                    {
+                        id: 'node2-1',
+                        label: '目标点',
+                        visible: true,
+                    },
+                    {
+                        id: 'node2-2',
+                        label: '目标点',
+                        visible: true,
+                    },
+                    {
+                        id: 'node3',
+                        label: '目标点2',
+                    },
+                ],
+                edges: [
+                    {
+                        source: 'node1',
+                        target: 'node2-1',
+                        label: '我是连线'
+                    },
+                    {
+                        source: 'node1',
+                        target: 'node2-2',
+                        label: '我是连线'
+                    },
+                    {
+                        source: 'node2-1',
+                        target: 'node3',
+                        label: '连线2-3'
+                    },
+                ]
+            }
+
+            const graph = new G6.Graph({
+                container: 'mountNode', // 指定挂载器
+                width: 1600,
+                height: 1000,
+                fitView: true,
+                // fitViewPadding: [20, 40, 50, 20],
+                // animate: true,
+                defaultNode: {
+                    type: 'rect'
+                },
+                layout: {
+                    type: 'dagre',
+                    nodesepFunc: (d) => {
+                        if (d.id === '3') {
+                            return 500;
+                        }
+                        return 20;
+                    },
+                    ranksep: 70,
+                    controlPoints: true,
+                },
+                modes: {
+                    default: [
+                        'drag-node',
+                        'drag-canvas'
+                    ]
+                },
+                default: {
+                    type: 'circle',
+                    color: '#ff0000'
+                }
+            })
+
+            // graph.data(remoteData)
+            graph.data(initData)
+
+            graph.render()
+        }
+        main()
+    </script>
+</body>
+
+</html>

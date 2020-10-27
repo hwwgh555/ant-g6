@@ -51,6 +51,17 @@
         const $container = document.querySelector('#container');
         const DRAG_NODE_MODE = 'dragNode'
         const ADD_EDGE_MODE = 'addEdge'
+        const DEFAULT_ANSWERS = [
+            {
+                label: '肯定',
+            },
+            {
+                label: '否定',
+            },
+            {
+                label: '未知',
+            },
+        ]
 
         // 第一次渲染拿到的宽度是正常的 this.wrapperWidth
         let isFirstRender = true
@@ -126,9 +137,9 @@
             onNodeMouseover(ev) {
                 const isEdgeLinkPoint = this.getIsEdgeLinkShape(ev)
                 if (isEdgeLinkPoint) {
-                    this.graph.setMode('addEdge')
+                    this.graph.setMode(ADD_EDGE_MODE)
                 } else {
-                    this.graph.setMode('dragNode')
+                    this.graph.setMode(DRAG_NODE_MODE)
                 }
             },
         })
@@ -226,9 +237,18 @@
                         target: ev.item.getModel().id,
                         targetAnchor: 0,
                     })
+                    // 如何主动调用 自动布局？
+                    // this.graph.execute()
+                    this.addingEdge = false
+                    this.edge = null
+                    // 重新布局 缺陷会导致 突然缩小，或放大
+                    // this.graph.updateLayout({})
+                    graph.updateLayout({
+                        ranksep: 10,
+                    })
+                    // this.graph.data(this.graph.save())
+                    // this.graph.render()
                 }
-                this.addingEdge = false
-                this.edge = null
             },
             onNodeMousemouse(ev) {
                 if (this.edge && this.addingEdge) {
@@ -258,16 +278,22 @@
                 }
 
                 const getAnswersWidth = (answers) => {
-                    let width = 0
-                    answers.forEach((item) => {
-                        width += ANSWER.paddingLeft * 2 + ANSWER.xSpace + getLabelWidth(item.label)
-                    })
-                    width += ANSWER.addIconWidth
+                    const getWidth = (arr) => {
+                        let width = 0
+                        arr.forEach((item) => {
+                            width += ANSWER.paddingLeft * 2 + ANSWER.xSpace + getLabelWidth(item.label)
+                        })
+                        return width
+                    }
+                    const width = getWidth(answers) + ANSWER.addIconWidth
+                    const minWidth = getWidth(DEFAULT_ANSWERS) + ANSWER.addIconWidth
+
+                    return minWidth > width ? minWidth : width
                     return width
                 }
                 const lineWidth = getAnswersWidth(cfg.answers)
                 const wrapperWidth = WRAPPER.paddingLeft + FAVIROTE.width + lineWidth
-                if(isFirstRender) {
+                if (isFirstRender) {
                     this.wrapperWidth = wrapperWidth // 方便计算节点时使用
                     isFirstRender = false
                 }
@@ -401,7 +427,7 @@
                             capture: true,
                             'custom-isEdgeLinkPoint': true, // 自定义属性，用于区分 keyShape
                             draggable: true,
-                            name: `${idx}-answer-name`
+                            name: `${idx}-answer-rect`
                         })
                         // 分支文字
                         group.addShape('text', {
@@ -418,7 +444,7 @@
                             'custom-isEdgeLinkPoint': true, // 自定义属性，用于区分 keyShape
                             draggable: true,
                             capture: true,
-                            name: `${idx}-answer-name`
+                            name: `${idx}-answer-text`
                         })
                         //分支关闭图标
                         group.addShape('image', {
@@ -449,9 +475,22 @@
             update(cfg, node) {
                 console.log('update::', cfg, node)
                 const group = node.getContainer()
-                console.log(group.get('children'))
+                // if (cfg['custom-update']) {
+                //     const updateInfo = cfg['custom-update']
+                //     const idx = updateInfo.name.split('-')[0]
+                //     const cloaseIconShape = group.find((ele) => ele.get('name') === updateInfo.name)
+                //     const rectShape = group.find((ele) => ele.get('name') === `${idx}-answer-rect`)
+                //     const txtShape = group.find((ele) => ele.get('name') ===  `${idx}-answer-text`)
+
+                //     if (updateInfo.type === 'remove') {
+                //         group.removeChild(cloaseIconShape)
+                //         group.removeChild(rectShape)
+                //         group.removeChild(txtShape)
+                //     }
+                // }
+                // group.clear()
             },
-            afterUpdate(cfg, node){
+            afterUpdate(cfg, node) {
                 // console.log('afterUpdate::', cfg, node)
             },
             // setState() {
@@ -492,15 +531,30 @@
             defaultNode: {
                 type: 'rect'
             },
+            // fitView: true,
             layout: {
                 type: 'dagre',
-                rankdir: 'TB',
+                // align: 'DL',
+                // 同一层 节点间间距
+                nodesepFunc: (cfg) => {
+                    // 要想精确计算 取决于前一个节点 需要拿到edge信息 可以从data中取到，然后再提取成要处理的数据类型
+                    if (cfg.id === 'node2-2') {
+                        // 动态计算 TODO:
+                        return 200
+                    }
+                    return 200
+                },
+                // 层级间距
+                ranksepFunc: (cfg, ...args) => {
+                    // 动态计算 TODO
+                    return 60
+                },
             },
             modes: {
                 // default: [ADD_LINE_MODE],
-                default: ['change-mode', 'drag-node'],
-                [DRAG_NODE_MODE]: ['change-mode', 'drag-node'],
-                [ADD_EDGE_MODE]: ['change-mode', 'add-edge'],
+                default: ['change-mode', 'drag-node', 'drag-canvas'],
+                [DRAG_NODE_MODE]: ['change-mode', 'drag-node', 'drag-canvas'],
+                [ADD_EDGE_MODE]: ['change-mode', 'add-edge', 'drag-canvas'],
             }
         })
 
@@ -511,7 +565,6 @@
                     label: '开始开始开始开始开始',
                     // content: '不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！',
                     content: 'xx',
-                    size: [100, 50],
                     type: 'myNode',
                     isStartNode: true, // 初始节点的特别设置 是否可以向其连线
                     // anchorPoints: [
@@ -519,56 +572,49 @@
                     //     [0.4, 0.8],
                     //     [0.7, 0.8],
                     // ],
-                    answers: [
-                        {
-                            label: '肯定',
-                        },
-                        {
-                            label: '否定',
-                        },
-                        // {
-                        //     label: '自定义',
-                        // },
-                        // {
-                        //     label: '自定义2',
-                        // },
-                        {
-                            label: '未知',
-                        },
-                    ]
+                    answers: DEFAULT_ANSWERS,
+                    // 这里是多个时下面的 连接点 计算不正常 TDDO:
+                    // answers: [
+                    //     {
+                    //         label: '肯定',
+                    //     },
+                    //     {
+                    //         label: '否定',
+                    //     },
+                    //     {
+                    //         label: '未知1',
+                    //     },
+                    //     {
+                    //         label: '未知2',
+                    //     },
+                    //     {
+                    //         label: '未知3',
+                    //     },
+                    // ]
                 },
                 {
-                    id: 'node2',
-                    label: '开始开始开始开始开1',
+                    id: 'node2-1',
+                    label: '开始开始开始开始开2-1',
                     content: '不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！',
                     content: '有点意思',
-                    size: [100, 50],
                     type: 'myNode',
-                    // anchorPoints: [
-                    //     [0.5, 0],
-                    //     [0.4, 0.8],
-                    //     [0.7, 0.8],
-                    // ],
-                    answers: [
-                        {
-                            label: '肯定',
-                        },
-                        {
-                            label: '否定',
-                        },
-                        {
-                            label: '自定义',
-                        },
-                        {
-                            label: '自定义2',
-                        },
-                        {
-                            label: '自定义自定义自定义自定义',
-                        },
-                        {
-                            label: '未知',
-                        },
-                    ]
+                    answers: DEFAULT_ANSWERS,
+                },
+                {
+                    id: 'node2-2',
+                    label: '开始开始开始开始开2-2',
+                    content: '不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！',
+                    // content: '有点意思',
+                    type: 'myNode',
+                    answers: DEFAULT_ANSWERS,
+                },
+                {
+                    id: 'node3-1',
+                    label: '开始开始开始开始开3-1',
+                    content: '不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！',
+                    content: '有点意思',
+                    type: 'myNode',
+                    answers: DEFAULT_ANSWERS,
                 },
                 // {
                 //     id: 'node3',
@@ -593,28 +639,30 @@
                 //     ],
                 // },
             ],
-            edges: [
-                // {
-                //     source: 'node1',
-                //     target: 'node2',
-                //     sourceAnchor: 1,
-                //     targetAnchor: 0,
-                // },
-                // {
-                //     source: 'node1',
-                //     target: 'node3',
-                //     sourceAnchor: 2,
-                //     targetAnchor: 0,
-                // },
-                // {
-                //     source: 'node2',
-                //     target: 'node4',
-                // },
-            ]
+            // edges: [
+            //     {
+            //         source: 'node1',
+            //         target: 'node2-1',
+            //         sourceAnchor: 1,
+            //         targetAnchor: 0,
+            //     },
+            //     {
+            //         source: 'node1',
+            //         target: 'node2-2',
+            //         sourceAnchor: 2,
+            //         targetAnchor: 0,
+            //     },
+            //     {
+            //         source: 'node2-1',
+            //         target: 'node3-1',
+            //         sourceAnchor: 2,
+            //         targetAnchor: 0,
+            //     },
+            // ]
         }
         graph.data(data)
         graph.render()
-        graph.setMode('addEdge')
+        graph.setMode(ADD_EDGE_MODE)
 
         graph.on('node:click', (ev) => {
             const target = ev.target
@@ -622,14 +670,36 @@
             if (name.endsWith('-answer-close-icon')) {
                 // 小圆x
                 const idx = Number(name.split('-')[0])
-                const curModel = ev.item.getModel()
-                // debugger
+                const node = ev.item
+                const curModel = node.getModel()
                 curModel.answers = curModel.answers.filter((answer, index) => index !== idx)
-                // graph.remove()
+                // sourceAnchor具有唯一性
+                const curEdge = node.getOutEdges().find((edge) => {
+                    const edgeModel = edge.getModel()
+                    if (edgeModel.source === curModel.id && edgeModel.sourceAnchor === (idx + 1)) {
+                        return true
+                    }
+                    return false
+                })
+                // 如果存在连接的edge则删除
+                if (curEdge) {
+                    graph.removeItem(curEdge)
+                }
+                // 重新绘制
                 graph.update(ev.item, {
-                    ...curModel,
                     answers: curModel.answers,
                 })
+                console.log(graph.save())
+                graph.data(graph.save())
+                graph.render()
+                // const answer = curModel.answers.find((answer, index) => index === idx)
+                // answer.isRemove = true
+                // graph.update(ev.item, {
+                //     'custom-update': {
+                //         type: 'remove',
+                //         name: name,
+                //     }
+                // })
                 // graph.refresh()
                 // graph.render() 
                 /* 
@@ -637,9 +707,9 @@
                         可能的解决方法：使用自定义结点的update  新问题： 出现了两个绘制图 // 普通shape无法删除
                         其它方法： answer 独立化为 node -- 怎么组织信息呢？
                 */
-                // debugger
             }
         })
+
     </script>
 </body>
 
