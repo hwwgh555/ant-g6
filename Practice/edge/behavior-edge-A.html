@@ -18,7 +18,7 @@
         src="https://gw.alipayobjects.com/os/antv/pkg/_antv.g6-3.7.1/dist/g6.min.js"></script>
     <script>
 
-        const fittingString = (str, answersWrapperWidth, fontSize) => {
+        const fittingString = (str, lineWidth, fontSize) => {
             let currentWidth = 0;
             let res = str;
             let lineCount = 1;
@@ -27,12 +27,12 @@
             const pattern = new RegExp('[\u4E00-\u9FA5]+');
             str.split('').forEach((letter, i) => {
                 if (pattern.test(letter)) {
+                    // getLetterWidth 似乎计算不准确
                     currentWidth += fontSize;
                 } else {
-                    // getLetterWidth 似乎计算不准确
                     currentWidth += G6.Util.getLetterWidth(letter, fontSize);
                 }
-                if (currentWidth > answersWrapperWidth) {
+                if (currentWidth > lineWidth) {
                     strArr.push(`${letter}\n`)
                     lineCount++
                     currentWidth = 0
@@ -45,13 +45,15 @@
             return {
                 linesStr: res,
                 lineCount,
-                lineWidth: lineCount === 1 ? currentWidth : answersWrapperWidth, // TODO:
             }
         }
 
         const $container = document.querySelector('#container');
         const DRAG_NODE_MODE = 'dragNode'
         const ADD_EDGE_MODE = 'addEdge'
+
+        // 第一次渲染拿到的宽度是正常的 this.wrapperWidth
+        let isFirstRender = true
 
         // 颜色应该是放在COLOR中，还是放在对应的块中？
         const COLOR = {
@@ -62,7 +64,7 @@
         }
 
         const WRAPPER = {
-            paddingTop: 5,
+            paddingTop: 10,
             paddingLeft: 5,
         }
 
@@ -90,6 +92,22 @@
             paddingTop: 5,
             lineHeight: 15,
         }
+
+        /*
+            ANSWER模型 -- 类似css的盒模板
+        */
+        const ANSWER = {
+            top: 80, // 参考起始点
+            xSpace: 20, // 多个Answer之间的距离
+            paddingTop: 2, // 文字与Answer边框的距离
+            paddingLeft: 8,
+            addIconWidth: 20,
+            bg: '#fff',
+            color: '#000',
+            fontSize: 14,
+            height: 18,
+        }
+
         G6.registerBehavior('change-mode', {
             getEvents() {
                 return {
@@ -133,8 +151,10 @@
                 const { x } = ev
                 const item = ev.item
                 const { minX, width } = item.getBBox()
-                const anchorPoints = item.getModel().anchorPoints
-                const cursorPoint = (x - minX) / width
+                // anchorPoints数据中定义的；getAnchorPoints 自定义图形中的方法
+                const model = item.getModel()
+                const anchorPoints = model.anchorPoints || item.getAnchorPoints()
+                const cursorPoint = x
                 if (anchorPoints.length === 1) {
                     return -1
                 }
@@ -146,7 +166,7 @@
                     value: 0,
                 }
                 anchorPoints.slice(1).forEach((item, index) => {
-                    const xDis = Math.abs(cursorPoint - item[0])
+                    const xDis = Math.abs(cursorPoint - item.x)
                     if (index === 0) {
                         target.index = index
                         target.value = xDis
@@ -223,29 +243,12 @@
         })
 
 
-        /*
-            ANSWER模型 -- 类似css的盒模板
-
-        */
-        const ANSWER = {
-            top: 80, // 参考起始点
-            xSpace: 20, // 多个Answer之间的距离
-            paddingTop: 2, // 文字与Answer边框的距离
-            paddingLeft: 8,
-            addIconWidth: 20,
-            bg: '#fff',
-            color: '#000',
-            fontSize: 14,
-            height: 18,
-        }
-
         G6.registerNode('myNode', {
             draw(cfg, group) {
 
-                // const maxWrapperWidth = FAVIROTE.width + 
-
                 const headerTitleLineHeight = HEADER.title.lineHeight
 
+                // 这个方法待合并
                 const getLabelWidth = (label) => {
                     if (!label) {
                         // 最小值
@@ -253,26 +256,26 @@
                     }
                     return label.split('').length * ANSWER.fontSize
                 }
-                let answersWrapperWidth = 0
 
                 const getAnswersWidth = (answers) => {
-                    let answersWrapperWidth = 0
+                    let width = 0
                     answers.forEach((item) => {
-                        answersWrapperWidth += ANSWER.paddingLeft * 2 + ANSWER.xSpace + getLabelWidth(item.label)
+                        width += ANSWER.paddingLeft * 2 + ANSWER.xSpace + getLabelWidth(item.label)
                     })
-                    answersWrapperWidth += ANSWER.addIconWidth
-                    return answersWrapperWidth
+                    width += ANSWER.addIconWidth
+                    return width
                 }
-                answersWrapperWidth = getAnswersWidth(cfg.answers)
-
-                const wraperWidth = WRAPPER.paddingLeft * 2 + FAVIROTE.width + answersWrapperWidth
+                const lineWidth = getAnswersWidth(cfg.answers)
+                const wrapperWidth = WRAPPER.paddingLeft + FAVIROTE.width + lineWidth
+                if(isFirstRender) {
+                    this.wrapperWidth = wrapperWidth // 方便计算节点时使用
+                    isFirstRender = false
+                }
                 // 文字计算有差异
-                const { linesStr, lineCount, lineWidth } = fittingString(cfg.content, answersWrapperWidth - HEADER.paddingLeft * 2, HEADER.content.fontSize)
+                const { linesStr, lineCount } = fittingString(cfg.content, lineWidth - HEADER.paddingLeft * 2, HEADER.content.fontSize)
                 const headerCotentHeight = HEADER.content.lineHeight * lineCount
-                // 高度如何计算才精准？
-                // 全名需要调整 TODO:
                 const headerHeight = HEADER.paddingTop * 3 + headerTitleLineHeight + headerCotentHeight
-                const headerWidth = HEADER.paddingLeft * 2 + lineWidth
+                const headerWidth = lineWidth
                 const bottomTitleHeight = BOTTOM_TITLE.paddingTop * 2 + BOTTOM_TITLE.lineHeight
                 /*
                     最外层宽度： 收藏(固定) +  或者 answers宽度
@@ -282,7 +285,7 @@
                     attrs: {
                         stroke: '#0000FF',
                         fill: COLOR.gray,
-                        width: wraperWidth, // 是由 answer的多少来决定的
+                        width: wrapperWidth, // 是由 answer的多少来决定的
                         height: WRAPPER.paddingTop + headerHeight + bottomTitleHeight + ANSWER.paddingTop * 2 + ANSWER.height, // 由纵向内容区决定
                     },
                     name: 'rect-shape'
@@ -295,7 +298,7 @@
                 group.addShape('image', {
                     attrs: {
                         x: 5,
-                        y: WRAPPER.paddingTop + headerHeight / 2, // 动态计算
+                        y: WRAPPER.paddingTop + headerHeight / 2 - ANSWER.fontSize, // 动态计算
                         img: FAVIROTE.icon,
                         width: 30,
                         height: 30,
@@ -320,6 +323,7 @@
                         width: headerWidth,
                         height: headerHeight,
                     },
+                    draggable: true, // 设置为true时，drag-node才会生效
                     name: 'rect-shape'
                 })
 
@@ -335,6 +339,8 @@
                             textBaseline: 'top', // 参考点位于 文字的坐标的上方
                             fill: '#3D4966',
                         },
+                        capture: true,
+                        draggable: true,
                         name: 'text-shape'
                     })
                 }
@@ -350,6 +356,7 @@
                             textBaseline: 'top', // 参考点位于 文字的坐标的上方
                             fill: '#3D4966', // TODO: 提取
                         },
+                        draggable: true,
                         name: 'text-shape'
                     })
                 }
@@ -372,12 +379,12 @@
                 })
 
                 if (cfg.answers) {
-                    const branches = cfg.answers
+                    const answers = cfg.answers
 
                     // 添加group之后， item.target 还能不能获取相应的shape? TODO:
 
                     let lastLeft = FAVIROTE.width
-                    branches.forEach((itm, idx) => {
+                    answers.forEach((itm, idx) => {
                         // 分支外框
                         const width = ANSWER.paddingLeft * 2 + getLabelWidth(itm.label)
                         group.addShape('rect', {
@@ -392,7 +399,9 @@
                                 cursor: 'pointer',
                             },
                             capture: true,
-                            name: `${idx}-branch-name`
+                            'custom-isEdgeLinkPoint': true, // 自定义属性，用于区分 keyShape
+                            draggable: true,
+                            name: `${idx}-answer-name`
                         })
                         // 分支文字
                         group.addShape('text', {
@@ -406,8 +415,10 @@
                                 fontSize: ANSWER.fontSize,
                                 cursor: 'pointer',
                             },
+                            'custom-isEdgeLinkPoint': true, // 自定义属性，用于区分 keyShape
+                            draggable: true,
                             capture: true,
-                            name: `${idx}-branch-name`
+                            name: `${idx}-answer-name`
                         })
                         //分支关闭图标
                         group.addShape('image', {
@@ -418,7 +429,7 @@
                                 cursor: 'pointer',
                             },
                             capture: true,
-                            name: `${idx}-branch-close-icon`
+                            name: `${idx}-answer-close-icon`
                         })
                         lastLeft += width + ANSWER.xSpace
                     })
@@ -430,30 +441,42 @@
                             cursor: 'pointer',
                         },
                         capture: true,
-                        name: `branch-add-icon`
+                        name: `answer-add-icon`
                     })
                 }
-
-                // group.addShape('rect', {
-                //     attrs: {
-                //         x: 30,
-                //         y: 20,
-                //         fill: 'blue',
-                //         width: 30,
-                //         height: 30,
-                //     },
-                //     'custom-isEdgeLinkPoint': true, // 自定义属性，用于区分 keyShape
-                //     draggable: true,
-                //     name: 'rect-shape1'
-                // })
-
                 return keyShape
             },
-            update(cfg) {
-
+            update(cfg, node) {
+                console.log('update::', cfg, node)
+                const group = node.getContainer()
+                console.log(group.get('children'))
             },
-            setState() {
+            afterUpdate(cfg, node){
+                // console.log('afterUpdate::', cfg, node)
+            },
+            // setState() {
 
+            // }
+            getAnchorPoints(cfg) {
+                // 这里是被动触发的
+                const answers = cfg.answers
+                // 这个方法待合并
+                const getLabelWidth = (label) => {
+                    if (!label) {
+                        // 最小值
+                        return 8 + 24 + 8
+                    }
+                    return label.split('').length * ANSWER.fontSize
+                }
+                let lastLeft = FAVIROTE.width
+                const anchors = answers.map((item, idx) => {
+                    const width = ANSWER.paddingLeft * 2 + getLabelWidth(item.label)
+                    // wrapperWidth从自定义节点中，拿到 wrapperWidth 是不对的
+                    const pos = (lastLeft + width / 2) / this.wrapperWidth
+                    lastLeft += width + ANSWER.xSpace
+                    return [pos, 1]
+                })
+                return [[0.5, 0]].concat(anchors)
             }
         })
 
@@ -471,7 +494,7 @@
             },
             layout: {
                 type: 'dagre',
-                // rankdir: 'TB',
+                rankdir: 'TB',
             },
             modes: {
                 // default: [ADD_LINE_MODE],
@@ -487,15 +510,15 @@
                     id: 'node1',
                     label: '开始开始开始开始开始',
                     // content: '不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！',
-                    content: '不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！',
+                    content: 'xx',
                     size: [100, 50],
                     type: 'myNode',
                     isStartNode: true, // 初始节点的特别设置 是否可以向其连线
-                    anchorPoints: [
-                        [0.5, 0],
-                        [0.4, 0.8],
-                        [0.7, 0.8],
-                    ],
+                    // anchorPoints: [
+                    //     [0.5, 0],
+                    //     [0.4, 0.8],
+                    //     [0.7, 0.8],
+                    // ],
                     answers: [
                         {
                             label: '肯定',
@@ -514,17 +537,39 @@
                         },
                     ]
                 },
-                // {
-                //     id: 'node2',
-                //     label: 'node2',
-                //     size: [100, 50],
-                //     type: 'myNode',
-                //     anchorPoints: [
-                //         [0.5, 0],
-                //         [0.4, 0.8],
-                //         [0.7, 0.8],
-                //     ],
-                // },
+                {
+                    id: 'node2',
+                    label: '开始开始开始开始开1',
+                    content: '不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！',
+                    content: '有点意思',
+                    size: [100, 50],
+                    type: 'myNode',
+                    // anchorPoints: [
+                    //     [0.5, 0],
+                    //     [0.4, 0.8],
+                    //     [0.7, 0.8],
+                    // ],
+                    answers: [
+                        {
+                            label: '肯定',
+                        },
+                        {
+                            label: '否定',
+                        },
+                        {
+                            label: '自定义',
+                        },
+                        {
+                            label: '自定义2',
+                        },
+                        {
+                            label: '自定义自定义自定义自定义',
+                        },
+                        {
+                            label: '未知',
+                        },
+                    ]
+                },
                 // {
                 //     id: 'node3',
                 //     label: 'node3',
@@ -570,6 +615,31 @@
         graph.data(data)
         graph.render()
         graph.setMode('addEdge')
+
+        graph.on('node:click', (ev) => {
+            const target = ev.target
+            const name = target.get('name')
+            if (name.endsWith('-answer-close-icon')) {
+                // 小圆x
+                const idx = Number(name.split('-')[0])
+                const curModel = ev.item.getModel()
+                // debugger
+                curModel.answers = curModel.answers.filter((answer, index) => index !== idx)
+                // graph.remove()
+                graph.update(ev.item, {
+                    ...curModel,
+                    answers: curModel.answers,
+                })
+                // graph.refresh()
+                // graph.render() 
+                /* 
+                    重新渲染可以实现删除，但是回到最初的布局位置 
+                        可能的解决方法：使用自定义结点的update  新问题： 出现了两个绘制图 // 普通shape无法删除
+                        其它方法： answer 独立化为 node -- 怎么组织信息呢？
+                */
+                // debugger
+            }
+        })
     </script>
 </body>
 

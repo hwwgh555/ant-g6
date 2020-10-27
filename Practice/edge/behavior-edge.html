@@ -71,6 +71,7 @@
                 if (anchorPoints.length === 2) {
                     return 1
                 }
+                // 寻找取小值index
                 let target = {
                     index: 0,
                     value: 0,
@@ -303,7 +304,7 @@
         }
         graph.data(data)
         graph.render()
-        graph.setMode('addEdge')
+        graph.setMode('addEdge') 
     </script>
 </body>
 
