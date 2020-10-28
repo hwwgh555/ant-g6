@@ -62,10 +62,6 @@
                 label: '未知',
             },
         ]
-
-        // 第一次渲染拿到的宽度是正常的 this.wrapperWidth
-        let isFirstRender = true
-
         // 颜色应该是放在COLOR中，还是放在对应的块中？
         const COLOR = {
             primary: '#1FCDCF',
@@ -158,16 +154,26 @@
                 return !!curShape.get('custom-isEdgeLinkPoint')
             },
             getSourceAnchor(ev) {
-                // 通过对比预定义的anchorPoints的x轴与拖动时的起始点坐标x，近的即是
+                // 原理： 鼠标起始点坐标x，对比存在节点位置，近的即是目标位置
                 const { x } = ev
                 const item = ev.item
                 const { minX, width } = item.getBBox()
                 // anchorPoints数据中定义的；getAnchorPoints 自定义图形中的方法
                 const model = item.getModel()
+                /* 
+                    item.getAnchorPoints()的结果 与 自定义的getAnchorPoints()返回值不同
+                    [
+                        {x: 1094.7232401492765, y: 618.3507717044183, index: 0},
+                        {x: 1003.1845984630937, y: 741.3507717044183, index: 1, anchorIndex: 1},
+                        {x: 1041.85438769026, y: 741.3507717044183, index: 2},
+                        {x: 1080.5241769174263, y: 741.3507717044183, index: 3}
+                    ]
+                */
                 const anchorPoints = model.anchorPoints || item.getAnchorPoints()
                 const cursorPoint = x
                 if (anchorPoints.length === 1) {
-                    return -1
+                    // TODO: 业务需求确认后，再调整
+                    return 0
                 }
                 if (anchorPoints.length === 2) {
                     return 1
@@ -243,9 +249,9 @@
                     this.edge = null
                     // 重新布局 缺陷会导致 突然缩小，或放大
                     // this.graph.updateLayout({})
-                    graph.updateLayout({
-                        ranksep: 10,
-                    })
+                    // graph.updateLayout({
+                    //     ranksep: 10,
+                    // })
                     // this.graph.data(this.graph.save())
                     // this.graph.render()
                 }
@@ -264,11 +270,7 @@
 
 
         G6.registerNode('myNode', {
-            draw(cfg, group) {
-
-                const headerTitleLineHeight = HEADER.title.lineHeight
-
-                // 这个方法待合并
+            getLabelWidth(label){
                 const getLabelWidth = (label) => {
                     if (!label) {
                         // 最小值
@@ -276,12 +278,14 @@
                     }
                     return label.split('').length * ANSWER.fontSize
                 }
-
+                return getLabelWidth(label)
+            },
+            getAnswersWidth(answers) {
                 const getAnswersWidth = (answers) => {
                     const getWidth = (arr) => {
                         let width = 0
                         arr.forEach((item) => {
-                            width += ANSWER.paddingLeft * 2 + ANSWER.xSpace + getLabelWidth(item.label)
+                            width += ANSWER.paddingLeft * 2 + ANSWER.xSpace + this.getLabelWidth(item.label)
                         })
                         return width
                     }
@@ -291,12 +295,19 @@
                     return minWidth > width ? minWidth : width
                     return width
                 }
-                const lineWidth = getAnswersWidth(cfg.answers)
+                return getAnswersWidth(answers)
+            },
+            getWrapperWidth(cfg) {
+                const lineWidth = this.getAnswersWidth(cfg.answers)
                 const wrapperWidth = WRAPPER.paddingLeft + FAVIROTE.width + lineWidth
-                if (isFirstRender) {
-                    this.wrapperWidth = wrapperWidth // 方便计算节点时使用
-                    isFirstRender = false
-                }
+                return wrapperWidth
+            },
+            draw(cfg, group) {
+
+                const headerTitleLineHeight = HEADER.title.lineHeight
+                const lineWidth = this.getAnswersWidth(cfg.answers)
+                const wrapperWidth = WRAPPER.paddingLeft + FAVIROTE.width + lineWidth
+                
                 // 文字计算有差异
                 const { linesStr, lineCount } = fittingString(cfg.content, lineWidth - HEADER.paddingLeft * 2, HEADER.content.fontSize)
                 const headerCotentHeight = HEADER.content.lineHeight * lineCount
@@ -412,7 +423,7 @@
                     let lastLeft = FAVIROTE.width
                     answers.forEach((itm, idx) => {
                         // 分支外框
-                        const width = ANSWER.paddingLeft * 2 + getLabelWidth(itm.label)
+                        const width = ANSWER.paddingLeft * 2 + this.getLabelWidth(itm.label)
                         group.addShape('rect', {
                             attrs: {
                                 x: lastLeft,
@@ -497,21 +508,13 @@
 
             // }
             getAnchorPoints(cfg) {
-                // 这里是被动触发的
+                // 这里是被动触发的 -- 使用锚点时，便会进行调用
                 const answers = cfg.answers
-                // 这个方法待合并
-                const getLabelWidth = (label) => {
-                    if (!label) {
-                        // 最小值
-                        return 8 + 24 + 8
-                    }
-                    return label.split('').length * ANSWER.fontSize
-                }
                 let lastLeft = FAVIROTE.width
                 const anchors = answers.map((item, idx) => {
-                    const width = ANSWER.paddingLeft * 2 + getLabelWidth(item.label)
-                    // wrapperWidth从自定义节点中，拿到 wrapperWidth 是不对的
-                    const pos = (lastLeft + width / 2) / this.wrapperWidth
+                    const width = ANSWER.paddingLeft * 2 + this.getLabelWidth(item.label)
+                    // wrapperWidth需要动态计算，因为大小本身是在不断变化的
+                    const pos = (lastLeft + width / 2) / this.getWrapperWidth(cfg) // TODO:
                     lastLeft += width + ANSWER.xSpace
                     return [pos, 1]
                 })
@@ -572,25 +575,25 @@
                     //     [0.4, 0.8],
                     //     [0.7, 0.8],
                     // ],
-                    answers: DEFAULT_ANSWERS,
+                    // answers: DEFAULT_ANSWERS,
                     // 这里是多个时下面的 连接点 计算不正常 TDDO:
-                    // answers: [
-                    //     {
-                    //         label: '肯定',
-                    //     },
-                    //     {
-                    //         label: '否定',
-                    //     },
-                    //     {
-                    //         label: '未知1',
-                    //     },
-                    //     {
-                    //         label: '未知2',
-                    //     },
-                    //     {
-                    //         label: '未知3',
-                    //     },
-                    // ]
+                    answers: [
+                        {
+                            label: '肯定',
+                        },
+                        {
+                            label: '否定',
+                        },
+                        {
+                            label: '未知1',
+                        },
+                        {
+                            label: '未知2',
+                        },
+                        {
+                            label: '未知3',
+                        },
+                    ]
                 },
                 {
                     id: 'node2-1',
@@ -639,26 +642,26 @@
                 //     ],
                 // },
             ],
-            // edges: [
-            //     {
-            //         source: 'node1',
-            //         target: 'node2-1',
-            //         sourceAnchor: 1,
-            //         targetAnchor: 0,
-            //     },
-            //     {
-            //         source: 'node1',
-            //         target: 'node2-2',
-            //         sourceAnchor: 2,
-            //         targetAnchor: 0,
-            //     },
-            //     {
-            //         source: 'node2-1',
-            //         target: 'node3-1',
-            //         sourceAnchor: 2,
-            //         targetAnchor: 0,
-            //     },
-            // ]
+            edges: [
+                {
+                    source: 'node1',
+                    target: 'node2-1',
+                    sourceAnchor: 1,
+                    targetAnchor: 0,
+                },
+                {
+                    source: 'node1',
+                    target: 'node2-2',
+                    sourceAnchor: 2,
+                    targetAnchor: 0,
+                },
+                {
+                    source: 'node2-1',
+                    target: 'node3-1',
+                    sourceAnchor: 2,
+                    targetAnchor: 0,
+                },
+            ]
         }
         graph.data(data)
         graph.render()
@@ -673,11 +676,11 @@
                 const node = ev.item
                 const curModel = node.getModel()
                 curModel.answers = curModel.answers.filter((answer, index) => index !== idx)
-                // sourceAnchor具有唯一性
+                // sourceAnchor具有唯一性 一个回复，只会连接到唯一一个节点
                 const curEdge = node.getOutEdges().find((edge) => {
                     const edgeModel = edge.getModel()
                     if (edgeModel.source === curModel.id && edgeModel.sourceAnchor === (idx + 1)) {
-                        return true
+                        return edge
                     }
                     return false
                 })
