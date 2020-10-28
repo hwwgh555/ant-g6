@@ -645,14 +645,14 @@
             edges: [
                 {
                     source: 'node1',
-                    target: 'node2-1',
-                    sourceAnchor: 1,
+                    target: 'node2-2',
+                    sourceAnchor: 2,
                     targetAnchor: 0,
                 },
                 {
                     source: 'node1',
-                    target: 'node2-2',
-                    sourceAnchor: 2,
+                    target: 'node2-1',
+                    sourceAnchor: 1,
                     targetAnchor: 0,
                 },
                 {
@@ -677,9 +677,10 @@
                 const curModel = node.getModel()
                 curModel.answers = curModel.answers.filter((answer, index) => index !== idx)
                 // sourceAnchor具有唯一性 一个回复，只会连接到唯一一个节点
+                const deleteIdx = idx + 1
                 const curEdge = node.getOutEdges().find((edge) => {
                     const edgeModel = edge.getModel()
-                    if (edgeModel.source === curModel.id && edgeModel.sourceAnchor === (idx + 1)) {
+                    if (edgeModel.source === curModel.id && edgeModel.sourceAnchor === deleteIdx) {
                         return edge
                     }
                     return false
@@ -687,6 +688,15 @@
                 // 如果存在连接的edge则删除
                 if (curEdge) {
                     graph.removeItem(curEdge)
+                    // 删除的如果不是最后一个连线点，则其它的连线位置soucrAnchor需要减1
+                    node.getOutEdges().forEach((edge) => {
+                        const edgeModel = edge.getModel()
+                        if (edgeModel.sourceAnchor > deleteIdx) {
+                            edge.update({
+                                sourceAnchor: edgeModel.sourceAnchor - 1,
+                            })
+                        }
+                    })
                 }
                 // 重新绘制
                 graph.update(ev.item, {
