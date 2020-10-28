@@ -149,6 +149,11 @@
                     dragend: 'onDragend'
                 }
             },
+            getIsEdgeAdded(ev) {
+                const idx = Number(ev.target.get('name').split('-')[0]) + 1
+                const isExist = ev.item.getOutEdges().some(edge => edge.getModel().sourceAnchor === idx)
+                return isExist
+            },
             getIsEdgeLinkShape(ev) {
                 const curShape = ev.target
                 return !!curShape.get('custom-isEdgeLinkPoint')
@@ -198,10 +203,10 @@
                 return target.index + 1
             },
             onNodeDragstart(ev) {
-                ev.stopPropagation()
-                ev.preventDefault()
                 const isEdgeLinkPoint = this.getIsEdgeLinkShape(ev)
                 if (!isEdgeLinkPoint) return
+                const isEdgeAdded = this.getIsEdgeAdded(ev)
+                if (isEdgeAdded) return
                 const graph = this.graph
                 const node = ev.item
                 const model = node.getModel()
@@ -252,8 +257,8 @@
                     // graph.updateLayout({
                     //     ranksep: 10,
                     // })
-                    // this.graph.data(this.graph.save())
-                    // this.graph.render()
+                    this.graph.data(this.graph.save())
+                    this.graph.render()
                 }
             },
             onNodeMousemouse(ev) {
@@ -270,7 +275,7 @@
 
 
         G6.registerNode('myNode', {
-            getLabelWidth(label){
+            getLabelWidth(label) {
                 const getLabelWidth = (label) => {
                     if (!label) {
                         // 最小值
@@ -307,7 +312,7 @@
                 const headerTitleLineHeight = HEADER.title.lineHeight
                 const lineWidth = this.getAnswersWidth(cfg.answers)
                 const wrapperWidth = WRAPPER.paddingLeft + FAVIROTE.width + lineWidth
-                
+
                 // 文字计算有差异
                 const { linesStr, lineCount } = fittingString(cfg.content, lineWidth - HEADER.paddingLeft * 2, HEADER.content.fontSize)
                 const headerCotentHeight = HEADER.content.lineHeight * lineCount
@@ -526,8 +531,14 @@
             container: 'container',
             width: $container.scrollWidth,
             height: $container.scrollHeight || 1000,
+            // 默认边样式
             defaultEdge: {
+                type: 'cubic',
                 style: {
+                    stroke: '#BFC9D3',
+                    lineWidth: 2,
+                    lineAppendWidth: 5,
+                    cursor: 'pointer',
                     endArrow: true,
                 }
             },
@@ -721,6 +732,10 @@
                         其它方法： answer 独立化为 node -- 怎么组织信息呢？
                 */
             }
+        })
+
+        graph.on('edge:click', (ev) => {
+            debugger
         })
 
     </script>
