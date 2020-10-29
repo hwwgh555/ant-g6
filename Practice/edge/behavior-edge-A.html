@@ -20,9 +20,15 @@
 
         const NODE_KEYSHAPE_NAME = 'node'
         const NODE_CLOSE_SHAPE_NAME = 'node-close-icon'
+
+        const FAVIROTE_SHAPE_NAME = 'favirote-icon'
+        const HEADER_SHAPE_NAME = 'header'
+        const HEADER_LABEL_SHAPE_NAME = 'header-label'
+        const HEADER_CONTENT_SHAPE_NAME = 'header-content'
         const ANSWER_ADD_SHAPE_NAME = 'answer-add-icon'
 
         const CLOSE_ICON = './icons/close.png'
+        const ANSWER_ADD_ICON = './icons/add.png'
 
         const ANSWER_CLOSE_ICON_SUFFIX = 'answer-remove-icon'
         const ANSWER_WRAPPER_SUFFIX = 'answer-rect'
@@ -79,6 +85,7 @@
             white: '#FFFFFF',
             gray: '#f2f5f7',
             blue: '#0000ff',
+            edgeGray: '#999999',
         }
 
         const WRAPPER = {
@@ -88,7 +95,8 @@
 
         const FAVIROTE = {
             width: 40,
-            icon: CLOSE_ICON,
+            favoriteIcon: './icons/answer.png',
+            notFavoriteIcon: './icons/close.png',
         }
 
         const HEADER = {
@@ -124,6 +132,15 @@
             color: '#000',
             fontSize: 14,
             height: 18,
+        }
+
+        const MY_EDGE = {
+            stroke: COLOR.edgeGray, // 相关配置
+            lineWidth: 2,
+            lineAppendWidth: 5,
+            width: 20,
+            height: 20,
+            selectedColor: COLOR.blue, // state变化
         }
 
         G6.registerBehavior('change-mode', {
@@ -234,7 +251,7 @@
                 this.addingEdge = true
             },
             onDragend(ev) {
-                // 模仿antd内置的库的 create-edge处理
+                // 模仿antd内置的库 create-edge 处理方法
                 const { item } = ev
                 if (!item || item.getID() === this.source || item.getType() !== 'node') {
                     if (this.addingEdge && this.edge) {
@@ -288,12 +305,11 @@
             draw(cfg, group) {
                 const startPoint = cfg.startPoint
                 const endPoint = cfg.endPoint
-
                 const keyShape = group.addShape('path', {
                     attrs: {
-                        lineWidth: 2,
-                        lineAppendWidth: 5,
-                        stroke: '#999',
+                        stroke: MY_EDGE.stroke,
+                        lineWidth: MY_EDGE.lineWidth,
+                        lineAppendWidth: MY_EDGE.lineAppendWidth,
                         path: [
                             ['M', startPoint.x, startPoint.y],
                             ['L', endPoint.x, endPoint.y]
@@ -306,10 +322,10 @@
 
                 group.addShape('image', {
                     attrs: {
-                        width: 20,
-                        height: 20,
-                        x: (startPoint.x + endPoint.x) / 2 - 10,
-                        y: (startPoint.y + endPoint.y) / 2 - 10,
+                        width: MY_EDGE.width,
+                        height: MY_EDGE.height,
+                        x: (startPoint.x + endPoint.x) / 2 - MY_EDGE.width / 2,
+                        y: (startPoint.y + endPoint.y) / 2 - MY_EDGE.height / 2,
                         cursor: 'pointer',
                         img: '',
                     },
@@ -326,20 +342,18 @@
                 if (name === 'selected') {
                     if (value) {
                         edgeShape.attr({
-                            stroke: '#0000ff',
+                            stroke: MY_EDGE.selectedColor,
                             cursor: 'default',
                         })
                         imgShape.attr({
-                            stroke: '#0000ff',
                             img: CLOSE_ICON
                         })
                     } else {
                         edgeShape.attr({
-                            stroke: '#999',
+                            stroke: MY_EDGE.stroke,
                             cursor: 'pointer',
                         })
                         imgShape.attr({
-                            stroke: '#333',
                             img: ''
                         })
                     }
@@ -414,13 +428,13 @@
                     attrs: {
                         x: 5,
                         y: WRAPPER.paddingTop + headerHeight / 2 - ANSWER.fontSize, // 动态计算
-                        img: FAVIROTE.icon,
+                        img: cfg.isFavorite ? FAVIROTE.favoriteIcon : FAVIROTE.notFavoriteIcon,
                         width: 30,
                         height: 30,
                         cursor: 'pointer',
                     },
                     capture: true,
-                    name: `favirote-icon`,
+                    name: FAVIROTE_SHAPE_NAME,
                 })
 
                 // start= header 主体文字说明
@@ -440,7 +454,7 @@
                         cursor: 'pointer',
                     },
                     draggable: true, // 设置为true时，drag-node才会生效
-                    name: 'header'
+                    name: HEADER_SHAPE_NAME,
                 })
 
                 if (cfg.label) {
@@ -458,7 +472,7 @@
                         },
                         capture: true,
                         draggable: true,
-                        name: 'header-label'
+                        name: HEADER_LABEL_SHAPE_NAME,
                     })
 
                     // 整个节点删除icon按钮
@@ -490,7 +504,7 @@
                             cursor: 'pointer'
                         },
                         draggable: true,
-                        name: 'header-content',
+                        name:HEADER_CONTENT_SHAPE_NAME,
                     })
                 }
                 //=end header
@@ -518,7 +532,7 @@
 
                     let lastLeft = FAVIROTE.width
                     answers.forEach((itm, idx) => {
-                        // 分支外框
+                        // 回复外框
                         const width = ANSWER.paddingLeft * 2 + this.getLabelWidth(itm.label)
                         group.addShape('rect', {
                             attrs: {
@@ -536,7 +550,7 @@
                             draggable: true,
                             name: `${idx}-${ANSWER_WRAPPER_SUFFIX}`
                         })
-                        // 分支文字
+                        // 回复文字
                         group.addShape('text', {
                             attrs: {
                                 x: lastLeft + ANSWER.paddingLeft,
@@ -553,7 +567,7 @@
                             capture: true,
                             name: `${idx}-${ANSWER_TEXT_SUFFIX}`
                         })
-                        //分支关闭图标 -- 占位图标
+                        //回复关闭图标 -- 占位图标
                         group.addShape('image', {
                             attrs: {
                                 x: lastLeft + width - 7, // 需要计算图标宽度
@@ -568,13 +582,14 @@
                         })
                         lastLeft += width + ANSWER.xSpace
                     })
+                    // 添加回复
                     group.addShape('image', {
                         attrs: {
                             x: lastLeft,
                             y: WRAPPER.paddingTop + headerHeight + bottomTitleHeight,
                             width: 16,
                             height: 16,
-                            img: './icons/add.png',
+                            img: ANSWER_ADD_ICON,
                             cursor: 'pointer',
                         },
                         capture: true,
@@ -620,7 +635,7 @@
                     }
                 }
                 if (name === 'headerHover') {
-                    const headerShape = group.getChildren().find(item => item.get('name') === 'header')
+                    const headerShape = group.getChildren().find(item => item.get('name') === HEADER_SHAPE_NAME)
                     const closeIconShape = group.getChildren().find(item => item.get('name') === NODE_CLOSE_SHAPE_NAME)
                     if (value) {
                         closeIconShape && closeIconShape.attr({
@@ -677,21 +692,9 @@
             // 默认边样式
             defaultEdge: {
                 type: 'myEdge',
-                style: {
-                    stroke: '#BFC9D3',
-                    lineWidth: 2,
-                    lineAppendWidth: 5,
-                    cursor: 'pointer',
-                    endArrow: true,
-                }
             },
-            // edgeStateStyles: {
-            //     selected: {
-            //         stroke: '#0000ff',
-            //     }
-            // },
             defaultNode: {
-                type: 'rect'
+                type: 'myNode'
             },
             // fitView: true,
             layout: {
@@ -724,18 +727,17 @@
             nodes: [
                 {
                     id: 'node1',
+                    isFavorite: true,
+                    isStartNode: true, // 初始节点的特别设置 是否可以向其连线
                     label: '开始开始开始开始开始',
                     // content: '不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！',
                     content: 'xx',
-                    type: 'myNode',
-                    isStartNode: true, // 初始节点的特别设置 是否可以向其连线
                     // anchorPoints: [
                     //     [0.5, 0],
                     //     [0.4, 0.8],
                     //     [0.7, 0.8],
                     // ],
                     // answers: DEFAULT_ANSWERS,
-                    // 这里是多个时下面的 连接点 计算不正常 TDDO:
                     answers: [
                         {
                             label: '肯定',
@@ -756,26 +758,26 @@
                 },
                 {
                     id: 'node2-1',
+                    isFavorite: false,
                     label: '开始开始开始开始开2-1',
                     content: '不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！',
                     content: '有点意思',
-                    type: 'myNode',
                     answers: DEFAULT_ANSWERS,
                 },
                 {
                     id: 'node2-2',
+                    isFavorite: false,
                     label: '开始开始开始开始开2-2',
                     content: '不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！',
                     // content: '有点意思',
-                    type: 'myNode',
                     answers: DEFAULT_ANSWERS,
                 },
                 {
                     id: 'node3-1',
+                    isFavorite: false,
                     label: '开始开始开始开始开3-1',
                     content: '不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！不好意思打扰了，祝您生活娱快！',
                     content: '有点意思',
-                    type: 'myNode',
                     answers: DEFAULT_ANSWERS,
                 },
                 // {
@@ -831,10 +833,10 @@
             let shows = []
             switch (type) {
                 case 'nodeSelected':
-                    shows = [NODE_KEYSHAPE_NAME, 'header', 'header-label', 'header-content']
+                    shows = [NODE_KEYSHAPE_NAME, HEADER_SHAPE_NAME, HEADER_LABEL_SHAPE_NAME,HEADER_CONTENT_SHAPE_NAME]
                     return shows.includes(shapeName)
                 case 'headerHover':
-                    shows = [NODE_CLOSE_SHAPE_NAME, 'header', 'header-label', 'header-content']
+                    shows = [NODE_CLOSE_SHAPE_NAME, HEADER_SHAPE_NAME,HEADER_LABEL_SHAPE_NAME,HEADER_CONTENT_SHAPE_NAME]
                     return shows.includes(shapeName)
                 case 'answerHover':
                     shows = [ANSWER_WRAPPER_SUFFIX, ANSWER_TEXT_SUFFIX, ANSWER_CLOSE_ICON_SUFFIX]
@@ -885,10 +887,19 @@
         graph.on('node:click', (ev) => {
             const target = ev.target
             const name = target.get('name')
-            // 选中 或 取消整个node
+            // 选中 或 取消选中整个node
             if (getIsActive('nodeSelected', name)) {
                 cancelNodeSelected()
                 graph.setItemState(ev.item, 'nodeSelected', true)
+            }
+            // 收藏
+            if (name === FAVIROTE_SHAPE_NAME) {
+                const isFavorite = ev.item.getModel().isFavorite
+                graph.update(ev.item, {
+                    isFavorite: !isFavorite,
+                })
+                graph.data(graph.save())
+                graph.render()
             }
 
             // 删除个整个node
@@ -903,9 +914,9 @@
             // 添加回答块
             if (name === ANSWER_ADD_SHAPE_NAME) {
                 const answers = ev.item.getModel().answers || []
-                const isExistUnknowAnswer = answers.findIndex((item) => item.label === '未知')
+                const isExistUnknowAnswer = answers.find((item) => item.label === '未知')
                 if (isExistUnknowAnswer) {
-                    answers.splice(-1, 0, { label: '新增'})
+                    answers.splice(-1, 0, { label: '新增' })
                 } else {
                     answers.push({ label: '新增' })
                 }
@@ -916,15 +927,18 @@
                 graph.render()
             }
 
-            // 删除回答块
+            /* 
+                删除回答块
+                如果存在连线，则删除连线
+            */
             if (name.endsWith(ANSWER_CLOSE_ICON_SUFFIX)) {
                 // 小圆x
                 const idx = Number(name.split('-')[0])
                 const node = ev.item
                 const curModel = node.getModel()
-                curModel.answers = curModel.answers.filter((answer, index) => index !== idx)
+                const newAnswers = curModel.answers.filter((answer, index) => index !== idx)
                 // sourceAnchor具有唯一性 一个回复，只会连接到唯一一个节点
-                const deleteIdx = idx + 1
+                const deleteIdx = idx + 1 // 第一个节点是[0.5, 0]，后面的节点才是回复节点
                 const curEdge = node.getOutEdges().find((edge) => {
                     const edgeModel = edge.getModel()
                     if (edgeModel.source === curModel.id && edgeModel.sourceAnchor === deleteIdx) {
@@ -935,19 +949,20 @@
                 // 如果存在连接的edge则删除
                 if (curEdge) {
                     graph.removeItem(curEdge)
-                    // 删除的如果不是最后一个连线点，则其它的连线位置soucrAnchor需要减1
-                    node.getOutEdges().forEach((edge) => {
-                        const edgeModel = edge.getModel()
-                        if (edgeModel.sourceAnchor > deleteIdx) {
-                            edge.update({
-                                sourceAnchor: edgeModel.sourceAnchor - 1,
-                            })
-                        }
-                    })
                 }
+                // 删除的如果不是最后一个连线点，则其它的连线位置soucrAnchor需要减1
+                node.getOutEdges().forEach((edge) => {
+                    const edgeModel = edge.getModel()
+                    // 让之后的连线的顺序依然正确
+                    if (edgeModel.sourceAnchor > deleteIdx) {
+                        edge.update({
+                            sourceAnchor: edgeModel.sourceAnchor - 1,
+                        })
+                    }
+                })
                 // 重新绘制
                 graph.update(ev.item, {
-                    answers: curModel.answers,
+                    answers: newAnswers,
                 })
                 graph.data(graph.save())
                 graph.render()
