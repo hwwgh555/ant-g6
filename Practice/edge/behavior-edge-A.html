@@ -20,10 +20,11 @@
 
         const NODE_KEYSHAPE_NAME = 'node'
         const NODE_CLOSE_SHAPE_NAME = 'node-close-icon'
+        const ANSWER_ADD_SHAPE_NAME = 'answer-add-icon'
 
         const CLOSE_ICON = './icons/close.png'
 
-        const ANSWER_CLOSE_ICON_SUFFIX = 'answer-close-icon'
+        const ANSWER_CLOSE_ICON_SUFFIX = 'answer-remove-icon'
         const ANSWER_WRAPPER_SUFFIX = 'answer-rect'
         const ANSWER_TEXT_SUFFIX = 'answer-text'
 
@@ -577,14 +578,14 @@
                             cursor: 'pointer',
                         },
                         capture: true,
-                        name: `answer-add-icon`
+                        name: ANSWER_ADD_SHAPE_NAME,
                     })
                 }
                 return keyShape
             },
             // update: undefined, // update: undefined时，调用graph.update时，会自动重新进行绘制
             update(cfg, node) {
-                console.log('update::', cfg, node)
+                // console.log('update::', cfg, node)
                 const group = node.getContainer()
                 // if (cfg['custom-update']) {
                 //     const updateInfo = cfg['custom-update']
@@ -892,11 +893,27 @@
 
             // 删除个整个node
             if (name === NODE_CLOSE_SHAPE_NAME) {
+                // 关联的节点会自动删除
                 graph.remove(ev.item)
-                console.log(graph.save())
                 graph.data(graph.save())
                 graph.render()
                 return
+            }
+
+            // 添加回答块
+            if (name === ANSWER_ADD_SHAPE_NAME) {
+                const answers = ev.item.getModel().answers || []
+                const isExistUnknowAnswer = answers.findIndex((item) => item.label === '未知')
+                if (isExistUnknowAnswer) {
+                    answers.splice(-1, 0, { label: '新增'})
+                } else {
+                    answers.push({ label: '新增' })
+                }
+                graph.update(ev.item, {
+                    answers,
+                })
+                graph.data(graph.save())
+                graph.render()
             }
 
             // 删除回答块
@@ -932,7 +949,6 @@
                 graph.update(ev.item, {
                     answers: curModel.answers,
                 })
-                console.log(graph.save())
                 graph.data(graph.save())
                 graph.render()
                 // const answer = curModel.answers.find((answer, index) => index === idx)
