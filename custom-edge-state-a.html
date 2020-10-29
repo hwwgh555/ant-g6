@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Tutorial Demo--G6</title>
+</head>
+
+<body>
+    <div id="mountNode"></div>
+
+    <script type="text/javascript"
+        src="https://gw.alipayobjects.com/os/antv/pkg/_antv.g6-3.7.1/dist/g6.min.js"></script>
+
+    <script>
+
+        const data = {
+            nodes: [
+                {
+                    id: 'node1', x: 150, y: 200, color: 'maroon',
+                    label: 'node1',
+                    anchorPoints: [
+                        [0, 0.5], [1, 0.5],
+                    ],
+                    lineAppendWidth: 15,
+                },
+                {
+                    id: 'node2', x: 350, y: 100, size: [50, 50],
+                    label: 'node2',
+                    anchorPoints: [
+                        [0, 0.5], [1, 0.5],
+                    ]
+                },
+            ],
+            edges: [
+                {
+                    id: 'edge1',
+                    // img: './logo-50x50.jpg',
+                    img: '',
+                    source: 'node1',
+                    target: 'node2',
+                    sourceAnchor: 1,
+                    targetAnchor: 0,
+                },
+            ]
+        };
+
+        G6.registerEdge(
+            'custom-edge',
+            {
+                draw(cfg, group) {
+                    // 这里的cfg是计算出来的值 结合dat中的nodes的anchorPoints，以及edges配置的sourceAnchor与targetAnchor
+                    console.log({ cfg })
+                    const startPoint = cfg.startPoint
+                    const endPoint = cfg.endPoint
+                    const shape = group.addShape('path', {
+                        attrs: {
+                            lineWidth: 2,
+                            lineAppendWidth: 20,
+                            stroke: '#333',
+                            // path的设置对我来说有挑战 
+                            path: [
+                                ['M', startPoint.x, startPoint.y],
+                                // ['L', endPoint.x / 3 + (2 / 3) * startPoint.x, startPoint.y],
+                                // ['L', endPoint.x / 3 + (2 / 3) * startPoint.x, endPoint.y],
+                                ['L', endPoint.x, endPoint.y]
+                            ],
+                            endArrow: {
+                                path: [
+                                    ['M', 0, 0],
+                                    ['L', 20, 10],
+                                    ['L', 20, -10],
+                                    ['z']
+                                ],
+                                fill: 'red',
+                                stroke: '#666',
+                                opacity: 0.8
+                            }
+                        },
+                        name: 'path-shape',
+                    })
+                    if (cfg.img) {
+                        const midPoint = shape.getPoint(0.5)
+                        group.addShape('image', {
+                            attrs: {
+                                x: midPoint.x - 10,
+                                y: midPoint.y - 10,
+                                width: 20,
+                                height: 20,
+                                img: cfg.img,
+                            },
+                            name: 'edge-close-icon'
+                        })
+                    }
+                    return shape
+                },
+                update: undefined,
+                setState(name, value, item) {
+                    // debugger
+                    console.log(name, value, item)
+                    const group = item.getContainer()
+                    const shape = group.get('children')[0]
+                    if (name === 'active') {
+                        if (value) {
+                            shape.attr({
+                                img: item.getModel().img,
+                            })
+                        } else {
+                            shape.attr({
+                                stroke: '#333',
+                                img: item.getModel().img,
+                            })
+                        }
+                    }
+                    if (name === 'selected') {
+                        if (value) {
+                            shape.attr({
+                                stroke: 'blue',
+                            })
+                        } else {
+                            shape.attr({
+                                stroke: '#333',
+                            })
+                        }
+                    }
+                }
+            },
+            'line'
+        )
+
+        const graph = new G6.Graph({
+            container: 'mountNode',
+            width: 500,
+            height: 500,
+            modes: {
+                default: ['drag-node'],
+            },
+            defaultNode: {
+                type: 'rect'
+            },
+            edgeStateStyles: {
+                active: {
+                    stroke: 'red',
+                },
+                selected: {
+                    lineWidth: 10,
+                }
+            },
+            defaultEdge: {
+                type: 'custom-edge',
+                style: {
+                    lineAppendWidth: 50,
+                }
+            }
+        });
+        graph.data(data);
+        graph.render();
+
+        graph.on('edge:click', (ev) => {
+            const edge = ev.item
+            if (ev.target.get('name') === 'edge-close-icon') {
+                graph.remove(ev.item)
+                return
+            }
+            graph.findAllByState('selected', true).forEach(item => {
+                item.clearItemStates(item, ['selected'])
+                graph.update(ev.item, {
+                    img: '',
+                })
+            })
+            graph.update(ev.item, {
+                img: './close.png',
+            })
+            graph.setItemState(edge, 'selected', true)
+        })
+
+        // graph.on('edge:mouseenter', (ev) => {
+        //     const edge = ev.item
+        //     if (edge.hasState('selected')) {
+        //         graph.update(ev.item, {
+        //             img: './close.png',
+        //         })
+        //         graph.setItemState(edge, 'active', true)
+        //     }
+        // })
+
+        // graph.on('edge:mouseleave', (ev) => {
+        //     const edge = ev.item
+        //     graph.update(ev.item, {
+        //         img: '',
+        //     })
+        //     graph.setItemState(edge, 'active', false)
+        // })
+    </script>
+</body>
+
+</html>

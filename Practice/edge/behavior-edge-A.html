@@ -273,6 +273,68 @@
             },
         })
 
+        G6.registerEdge('myEdge', {
+            draw(cfg, group) {
+                const startPoint = cfg.startPoint
+                const endPoint = cfg.endPoint
+
+                const keyShape = group.addShape('path', {
+                    attrs: {
+                        lineWidth: 2,
+                        lineAppendWidth: 5,
+                        stroke: '#999',
+                        path: [
+                            ['M', startPoint.x, startPoint.y],
+                            ['L', endPoint.x, endPoint.y]
+                        ],
+                        endArrow: true,
+                        cursor: 'pointer',
+                    },
+                    name: 'edge-path-shape',
+                })
+
+                group.addShape('image', {
+                    attrs: {
+                        width: 20,
+                        height: 20,
+                        x: (startPoint.x + endPoint.x) / 2 - 10,
+                        y: (startPoint.y + endPoint.y) / 2 - 10,
+                        cursor: 'pointer',
+                        img: '',
+                    },
+                    name: 'edge-close-icon',
+                })
+
+                return keyShape
+            },
+            setState(name, value, item) {
+                const group = item.getContainer()
+                const shapes = group.getChildren() // 顺序根据draw时确定
+                const edgeShape = shapes[0]
+                const imgShape = shapes[1]
+                if (name === 'selected') {
+                    if (value) {
+                        edgeShape.attr({
+                            stroke: '#0000ff',
+                            cursor: 'default',
+                        })
+                        imgShape.attr({
+                            stroke: '#0000ff',
+                            img: './icons/close.png'
+                        })
+                    } else {
+                        edgeShape.attr({
+                            stroke: '#999',
+                            cursor: 'pointer',
+                        })
+                        imgShape.attr({
+                            stroke: '#333',
+                            img: ''
+                        })
+                    }
+                }
+            }
+        })
 
         G6.registerNode('myNode', {
             getLabelWidth(label) {
@@ -488,6 +550,7 @@
                 }
                 return keyShape
             },
+            // update: undefined, // update: undefined时，调用graph.update时，会自动重新进行绘制
             update(cfg, node) {
                 console.log('update::', cfg, node)
                 const group = node.getContainer()
@@ -509,9 +572,9 @@
             afterUpdate(cfg, node) {
                 // console.log('afterUpdate::', cfg, node)
             },
-            // setState() {
+            setState() {
 
-            // }
+            },
             getAnchorPoints(cfg) {
                 // 这里是被动触发的 -- 使用锚点时，便会进行调用
                 const answers = cfg.answers
@@ -533,13 +596,18 @@
             height: $container.scrollHeight || 1000,
             // 默认边样式
             defaultEdge: {
-                type: 'cubic',
+                type: 'myEdge',
                 style: {
                     stroke: '#BFC9D3',
                     lineWidth: 2,
                     lineAppendWidth: 5,
                     cursor: 'pointer',
                     endArrow: true,
+                }
+            },
+            edgeStateStyles: {
+                selected: {
+                    stroke: '#0000ff',
                 }
             },
             defaultNode: {
@@ -735,7 +803,19 @@
         })
 
         graph.on('edge:click', (ev) => {
-            debugger
+            const item = ev.item
+            const target = ev.target
+            // 删除边
+            if (target.get('name') === 'edge-close-icon' && item.hasState('selected')) {
+                graph.remove(item)
+                graph.updateLayout({})
+                return
+            }
+            // 显示边的删除按钮
+            graph.findAllByState('edge', 'selected').forEach((item) => {
+                graph.clearItemStates(item, ['selected'])
+            })
+            graph.setItemState(ev.item, 'selected', true)
         })
 
     </script>
