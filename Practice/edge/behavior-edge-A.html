@@ -18,10 +18,19 @@
         src="https://gw.alipayobjects.com/os/antv/pkg/_antv.g6-3.7.1/dist/g6.min.js"></script>
     <script>
 
+        const NODE_KEYSHAPE_NAME = 'node'
+        const NODE_CLOSE_SHAPE_NAME = 'node-close-icon'
+
+        const CLOSE_ICON = './icons/close.png'
+
+        const ANSWER_CLOSE_ICON_SUFFIX = 'answer-close-icon'
+        const ANSWER_WRAPPER_SUFFIX = 'answer-rect'
+        const ANSWER_TEXT_SUFFIX = 'answer-text'
+
         const fittingString = (str, lineWidth, fontSize) => {
-            let currentWidth = 0;
-            let res = str;
-            let lineCount = 1;
+            let currentWidth = 0
+            let res = str
+            let lineCount = 1
             let strArr = []
             // 匹配中文正则
             const pattern = new RegExp('[\u4E00-\u9FA5]+');
@@ -68,16 +77,17 @@
             hoverPrimary: '#b4eaeb',
             white: '#FFFFFF',
             gray: '#f2f5f7',
+            blue: '#0000ff',
         }
 
         const WRAPPER = {
             paddingTop: 10,
-            paddingLeft: 5,
+            paddingLeft: 8,
         }
 
         const FAVIROTE = {
             width: 40,
-            icon: './icons/close.png',
+            icon: CLOSE_ICON,
         }
 
         const HEADER = {
@@ -320,7 +330,7 @@
                         })
                         imgShape.attr({
                             stroke: '#0000ff',
-                            img: './icons/close.png'
+                            img: CLOSE_ICON
                         })
                     } else {
                         edgeShape.attr({
@@ -387,12 +397,12 @@
                 */
                 const keyShape = group.addShape('rect', {
                     attrs: {
-                        stroke: '#0000FF',
+                        stroke: COLOR.gray,
                         fill: COLOR.gray,
                         width: wrapperWidth, // 是由 answer的多少来决定的
                         height: WRAPPER.paddingTop + headerHeight + bottomTitleHeight + ANSWER.paddingTop * 2 + ANSWER.height, // 由纵向内容区决定
                     },
-                    name: 'rect-shape'
+                    name: NODE_KEYSHAPE_NAME,
                 })
 
                 /*
@@ -415,7 +425,7 @@
                 // start= header 主体文字说明
                 group.addShape('rect', {
                     attrs: {
-                        stroke: '#0000FF',
+                        // stroke: COLOR.primary,
                         /* 存在3种
                             未选中：'#FFFFFF'
                             hover: '#b4eaeb'
@@ -426,9 +436,10 @@
                         y: WRAPPER.paddingTop,
                         width: headerWidth,
                         height: headerHeight,
+                        cursor: 'pointer',
                     },
                     draggable: true, // 设置为true时，drag-node才会生效
-                    name: 'rect-shape'
+                    name: 'header'
                 })
 
                 if (cfg.label) {
@@ -442,11 +453,27 @@
                             textAlign: 'left',
                             textBaseline: 'top', // 参考点位于 文字的坐标的上方
                             fill: '#3D4966',
+                            cursor: 'pointer',
                         },
                         capture: true,
                         draggable: true,
-                        name: 'text-shape'
+                        name: 'header-label'
                     })
+
+                    // 整个节点删除icon按钮
+                    if (!cfg.isStartNode) {
+                        group.addShape('image', {
+                            attrs: {
+                                x: FAVIROTE.width + headerWidth - 8,
+                                y: WRAPPER.paddingTop - 8,
+                                width: 16,
+                                height: 16,
+                                img: '',
+                                cursor: 'pointer',
+                            },
+                            name: NODE_CLOSE_SHAPE_NAME,
+                        })
+                    }
                 }
                 if (cfg.content) {
                     group.addShape('text', {
@@ -459,9 +486,10 @@
                             textAlign: 'left',
                             textBaseline: 'top', // 参考点位于 文字的坐标的上方
                             fill: '#3D4966', // TODO: 提取
+                            cursor: 'pointer'
                         },
                         draggable: true,
-                        name: 'text-shape'
+                        name: 'header-content',
                     })
                 }
                 //=end header
@@ -505,7 +533,7 @@
                             capture: true,
                             'custom-isEdgeLinkPoint': true, // 自定义属性，用于区分 keyShape
                             draggable: true,
-                            name: `${idx}-answer-rect`
+                            name: `${idx}-${ANSWER_WRAPPER_SUFFIX}`
                         })
                         // 分支文字
                         group.addShape('text', {
@@ -522,25 +550,29 @@
                             'custom-isEdgeLinkPoint': true, // 自定义属性，用于区分 keyShape
                             draggable: true,
                             capture: true,
-                            name: `${idx}-answer-text`
+                            name: `${idx}-${ANSWER_TEXT_SUFFIX}`
                         })
-                        //分支关闭图标
+                        //分支关闭图标 -- 占位图标
                         group.addShape('image', {
                             attrs: {
                                 x: lastLeft + width - 7, // 需要计算图标宽度
                                 y: WRAPPER.paddingTop + headerHeight + bottomTitleHeight + ANSWER.paddingTop - 5,
-                                img: './icons/close.png',
+                                width: 16,
+                                height: 16,
+                                img: '',
                                 cursor: 'pointer',
                             },
                             capture: true,
-                            name: `${idx}-answer-close-icon`
+                            name: `${idx}-${ANSWER_CLOSE_ICON_SUFFIX}`
                         })
                         lastLeft += width + ANSWER.xSpace
                     })
                     group.addShape('image', {
                         attrs: {
                             x: lastLeft,
-                            y: WRAPPER.paddingTop + headerHeight + bottomTitleHeight + ANSWER.paddingTop,
+                            y: WRAPPER.paddingTop + headerHeight + bottomTitleHeight,
+                            width: 16,
+                            height: 16,
                             img: './icons/add.png',
                             cursor: 'pointer',
                         },
@@ -572,8 +604,55 @@
             afterUpdate(cfg, node) {
                 // console.log('afterUpdate::', cfg, node)
             },
-            setState() {
-
+            setState(name, value, item) {
+                const group = item.getContainer()
+                if (name === 'nodeSelected') {
+                    const nodeShape = group.getChildren()[0]
+                    if (value) {
+                        nodeShape.attr({
+                            stroke: COLOR.blue,
+                        })
+                    } else {
+                        nodeShape.attr({
+                            stroke: COLOR.gray,
+                        })
+                    }
+                }
+                if (name === 'headerHover') {
+                    const headerShape = group.getChildren().find(item => item.get('name') === 'header')
+                    const closeIconShape = group.getChildren().find(item => item.get('name') === NODE_CLOSE_SHAPE_NAME)
+                    if (value) {
+                        closeIconShape && closeIconShape.attr({
+                            img: CLOSE_ICON,
+                        })
+                        headerShape && headerShape.attr({
+                            fill: COLOR.hoverPrimary,
+                        })
+                    } else {
+                        closeIconShape && closeIconShape.attr({
+                            img: '',
+                        })
+                        headerShape && headerShape.attr({
+                            fill: COLOR.white,
+                        })
+                    }
+                }
+                if (name === 'answerHover') {
+                    /* value
+                        'index-true'  // index 表示位置；  'true'/ 'false' 显示/隐藏
+                    */
+                    const [idx, isShow] = value.split('-')
+                    const closeIconShape = group.getChildren().find(shape => shape.get('name') === `${idx}-${ANSWER_CLOSE_ICON_SUFFIX}`)
+                    if (isShow === 'true' && Number(idx) >= 0) {
+                        closeIconShape && closeIconShape.attr({
+                            img: CLOSE_ICON,
+                        })
+                    } else {
+                        closeIconShape && closeIconShape.attr({
+                            img: '',
+                        })
+                    }
+                }
             },
             getAnchorPoints(cfg) {
                 // 这里是被动触发的 -- 使用锚点时，便会进行调用
@@ -582,7 +661,7 @@
                 const anchors = answers.map((item, idx) => {
                     const width = ANSWER.paddingLeft * 2 + this.getLabelWidth(item.label)
                     // wrapperWidth需要动态计算，因为大小本身是在不断变化的
-                    const pos = (lastLeft + width / 2) / this.getWrapperWidth(cfg) // TODO:
+                    const pos = (lastLeft + width / 2) / this.getWrapperWidth(cfg)
                     lastLeft += width + ANSWER.xSpace
                     return [pos, 1]
                 })
@@ -605,11 +684,11 @@
                     endArrow: true,
                 }
             },
-            edgeStateStyles: {
-                selected: {
-                    stroke: '#0000ff',
-                }
-            },
+            // edgeStateStyles: {
+            //     selected: {
+            //         stroke: '#0000ff',
+            //     }
+            // },
             defaultNode: {
                 type: 'rect'
             },
@@ -746,10 +825,82 @@
         graph.render()
         graph.setMode(ADD_EDGE_MODE)
 
+        const getIsActive = (type, shapeName) => {
+            // hover的整个过程，还有待思考  TODO:
+            let shows = []
+            switch (type) {
+                case 'nodeSelected':
+                    shows = [NODE_KEYSHAPE_NAME, 'header', 'header-label', 'header-content']
+                    return shows.includes(shapeName)
+                case 'headerHover':
+                    shows = [NODE_CLOSE_SHAPE_NAME, 'header', 'header-label', 'header-content']
+                    return shows.includes(shapeName)
+                case 'answerHover':
+                    shows = [ANSWER_WRAPPER_SUFFIX, ANSWER_TEXT_SUFFIX, ANSWER_CLOSE_ICON_SUFFIX]
+                    return shows.includes(shapeName)
+                default:
+                    return false
+            }
+        }
+
+        graph.on('node:mouseover', (ev) => {
+            const target = ev.target
+            const item = ev.item
+            const name = target.get('name')
+            if (getIsActive('headerHover', name)) {
+                graph.setItemState(item, 'headerHover', true)
+                return
+            }
+            const answerShapeSuffix = name.slice(name.indexOf('-') + 1)
+            if (getIsActive('answerHover', answerShapeSuffix)) {
+                graph.setItemState(item, 'answerHover', `${name.split('-')[0]}-true`)
+            }
+        })
+
+        graph.on('node:mouseout', (ev) => {
+            const target = ev.target
+            const item = ev.item
+            const name = target.get('name')
+            if (getIsActive('headerHover', name)) {
+                graph.setItemState(item, 'headerHover', false)
+                return
+            }
+            const answerShapeSuffix = name.slice(name.indexOf('-') + 1)
+            if (getIsActive('answerHover', answerShapeSuffix)) {
+                graph.setItemState(item, 'answerHover', `${name.split('-')[0]}-false`)
+            }
+        })
+
+        const cancelNodeSelected = () => {
+            const nodes = graph.findAllByState('node', 'nodeSelected')
+            nodes.forEach((node) => {
+                graph.setItemState(node, 'nodeSelected', false)
+            })
+        }
+        graph.on('canvas:click', (ev) => {
+            cancelNodeSelected()
+        })
+
         graph.on('node:click', (ev) => {
             const target = ev.target
             const name = target.get('name')
-            if (name.endsWith('-answer-close-icon')) {
+            // 选中 或 取消整个node
+            if (getIsActive('nodeSelected', name)) {
+                cancelNodeSelected()
+                graph.setItemState(ev.item, 'nodeSelected', true)
+            }
+
+            // 删除个整个node
+            if (name === NODE_CLOSE_SHAPE_NAME) {
+                graph.remove(ev.item)
+                console.log(graph.save())
+                graph.data(graph.save())
+                graph.render()
+                return
+            }
+
+            // 删除回答块
+            if (name.endsWith(ANSWER_CLOSE_ICON_SUFFIX)) {
                 // 小圆x
                 const idx = Number(name.split('-')[0])
                 const node = ev.item
@@ -805,8 +956,8 @@
         graph.on('edge:click', (ev) => {
             const item = ev.item
             const target = ev.target
-            // 删除边
-            if (target.get('name') === 'edge-close-icon' && item.hasState('selected')) {
+            // 删除边 -- 选中后，才能删除
+            if (item.hasState('selected') && target.get('name') === 'edge-close-icon') {
                 graph.remove(item)
                 graph.updateLayout({})
                 return
